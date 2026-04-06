@@ -1,4 +1,4 @@
-package com.kim.fraudengine.frauddetectionengine;
+package com.kim.fraudengine;
 
 import org.springframework.boot.SpringApplication;
 
