@@ -12,21 +12,50 @@ public record TransactionEvent(
         String merchantName,
         TransactionCategory category,
         String currency,
-        String countryCode, //
-        Instant timestamp
-) {
-    public static TransactionEvent of(String customerId, BigDecimal amount,
-                                      String merchantId, String merchantName,
-                                      TransactionCategory category, String currency,
-                                      String countryCode) {
+        String countryCode,
+        Instant timestamp) {
+    public static TransactionEvent of(
+            String customerId,
+            BigDecimal amount,
+            String merchantId,
+            String merchantName,
+            TransactionCategory category,
+            String currency,
+            String countryCode) {
         return of(null, customerId, amount, merchantId, merchantName, category, currency, countryCode);
     }
 
-    public static TransactionEvent of(UUID transactionId, String customerId, BigDecimal amount,
-                                      String merchantId, String merchantName,
-                                      TransactionCategory category, String currency,
-                                      String countryCode) {
-        return new TransactionEvent(transactionId != null ? transactionId : UUID.randomUUID(), customerId, amount,
-                merchantId, merchantName, category, currency, countryCode, Instant.now());
+    public static TransactionEvent of(
+            UUID transactionId,
+            String customerId,
+            BigDecimal amount,
+            String merchantId,
+            String merchantName,
+            TransactionCategory category,
+            String currency,
+            String countryCode) {
+        return new TransactionEvent(
+                transactionId != null ? transactionId : UUID.randomUUID(),
+                customerId,
+                amount,
+                merchantId,
+                merchantName,
+                category,
+                currency,
+                countryCode,
+                Instant.now());
+    }
+
+    public TransactionEvent withAmount(BigDecimal newAmount) {
+        return new TransactionEvent(
+                this.id,
+                this.customerId,
+                newAmount,
+                this.merchantId,
+                this.merchantName,
+                this.category,
+                this.currency,
+                this.countryCode,
+                this.timestamp);
     }
 }
