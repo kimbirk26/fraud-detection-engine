@@ -1,4 +1,4 @@
-package com.kim.fraudengine.frauddetectionengine;
+package com.kim.fraudengine;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -10,16 +10,20 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
 
+    private static final DockerImageName KAFKA_IMAGE =
+            DockerImageName.parse("apache/kafka-native:3.8.0");
+    private static final DockerImageName POSTGRES_IMAGE =
+            DockerImageName.parse("postgres:16-alpine");
+
     @Bean
     @ServiceConnection
     KafkaContainer kafkaContainer() {
-        return new KafkaContainer(DockerImageName.parse("apache/kafka-native:latest"));
+        return new KafkaContainer(KAFKA_IMAGE);
     }
 
     @Bean
     @ServiceConnection
     PostgreSQLContainer<?> postgresContainer() {
-        return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
+        return new PostgreSQLContainer<>(POSTGRES_IMAGE);
     }
-
 }

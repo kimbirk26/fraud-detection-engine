@@ -1,13 +1,14 @@
-package com.kim.fraudengine.frauddetectionengine;
+package com.kim.fraudengine;
 
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class FraudDetectionEngineApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(FraudDetectionEngineApplication.class, args);
     }
-
 }
