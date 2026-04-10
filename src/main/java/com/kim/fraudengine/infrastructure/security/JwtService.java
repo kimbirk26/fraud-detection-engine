@@ -22,7 +22,7 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String secret, @Value("${app.jwt.expiry-minutes:60}") long expiryMinutes) {
 
-        if (secret.length() < 32) {
+        if (secret == null || secret.isBlank() || secret.length() < 32) {
             throw new IllegalArgumentException("app.jwt.secret must be at least 32 characters for HS256");
         }
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
