@@ -13,7 +13,25 @@ public class CustomerScopedUserDetails extends User implements CustomerScopedPri
                                      String password,
                                      Collection<? extends GrantedAuthority> authorities,
                                      String customerId) {
-        super(username, password, authorities);
+        this(username, password, true, true, true, true, authorities, customerId);
+    }
+
+    public CustomerScopedUserDetails(String username,
+                                     String password,
+                                     boolean enabled,
+                                     boolean accountNonExpired,
+                                     boolean credentialsNonExpired,
+                                     boolean accountNonLocked,
+                                     Collection<? extends GrantedAuthority> authorities,
+                                     String customerId) {
+        super(
+                username,
+                password,
+                enabled,
+                accountNonExpired,
+                credentialsNonExpired,
+                accountNonLocked,
+                authorities);
         this.customerId = normalize(customerId);
     }
 

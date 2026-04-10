@@ -8,6 +8,8 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -106,6 +108,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(400, "Bad Request", message, traceId));
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex) {
+        String traceId = newTraceId();
+
+        log.warn("Access denied [traceId={}]: {}", traceId, ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(403, "Forbidden", "Access is denied.", traceId));
     }
 
     @ExceptionHandler(Exception.class)

@@ -31,6 +31,17 @@ class FlywayMigrationFilesTest {
                 .contains("constraint uk_fraud_alerts_transaction_id unique (transaction_id)");
     }
 
+    @Test
+    void shouldDefineAuthenticationSchema() throws IOException {
+        String migration = read("db/migration/V3__create_auth_users.sql");
+
+        assertThat(migration)
+                .contains("create table auth_users")
+                .contains("password_hash varchar(255) not null")
+                .contains("create table auth_user_authorities")
+                .contains("foreign key (username) references auth_users (username) on delete cascade");
+    }
+
     private String read(String path) throws IOException {
         try (var input = getClass().getClassLoader().getResourceAsStream(path)) {
             assertThat(input).as("Missing migration resource: %s", path).isNotNull();

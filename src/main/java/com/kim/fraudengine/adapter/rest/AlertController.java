@@ -8,6 +8,7 @@ import com.kim.fraudengine.domain.model.AlertStatus;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.port.inbound.GetAlertsUseCase;
 import com.kim.fraudengine.infrastructure.logging.AuditLog;
+import com.kim.fraudengine.infrastructure.security.CustomerAccessEvaluator;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,9 +27,13 @@ import java.util.UUID;
 public class AlertController {
 
     private final GetAlertsUseCase getAlertsUseCase;
+    private final CustomerAccessEvaluator customerAccessEvaluator;
 
-    public AlertController(GetAlertsUseCase getAlertsUseCase) {
+    public AlertController(
+            GetAlertsUseCase getAlertsUseCase,
+            CustomerAccessEvaluator customerAccessEvaluator) {
         this.getAlertsUseCase = getAlertsUseCase;
+        this.customerAccessEvaluator = customerAccessEvaluator;
     }
 
     @PreAuthorize("hasAuthority('alerts:read')")
@@ -38,6 +43,9 @@ public class AlertController {
         AlertResponse response = getAlertsUseCase.getById(id)
                 .map(AlertMapper::toResponse)
                 .orElseThrow(() -> new AlertNotFoundException(id));
+        if (!customerAccessEvaluator.canRead(response.customerId(), authentication)) {
+            throw new AlertNotFoundException(id);
+        }
         AuditLog.record("ALERT_VIEWED", auditDetails(authentication, id)
                 .append("customerId", response.customerId())
                 .append("severity", response.highestSeverity().name())
@@ -61,7 +69,7 @@ public class AlertController {
         return alerts;
     }
 
-    @PreAuthorize("hasAuthority('alerts:read')")
+    @PreAuthorize("hasAuthority('alerts:read:all')")
     @GetMapping
     public List<AlertResponse> getByFilter(
             @RequestParam(required = false) AlertStatus status,

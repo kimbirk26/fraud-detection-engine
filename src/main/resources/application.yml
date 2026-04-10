@@ -52,8 +52,11 @@ app:
       window-minutes: ${APP_RULES_VELOCITY_WINDOW_MINUTES:10}
   jwt: # Minimum 32 characters for HS256. In production: load from AWS Secrets Manager.
     # Generate a strong secret with: openssl rand -base64 48
-    secret: ${JWT_SECRET:fraud-engine-dev-secret-key-minimum-32-chars}
+    secret: ${JWT_SECRET}
     expiry-minutes: 60
+  auth:
+    bootstrap:
+      enabled: false
 
 management:
   endpoints:

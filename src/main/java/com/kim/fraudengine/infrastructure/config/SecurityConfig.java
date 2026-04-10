@@ -1,9 +1,8 @@
 package com.kim.fraudengine.infrastructure.config;
 
-import com.kim.fraudengine.infrastructure.security.CustomerScopedUserDetails;
+import com.kim.fraudengine.infrastructure.logging.RequestCorrelationFilter;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
-import com.kim.fraudengine.infrastructure.security.RequestCorrelationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +21,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -35,7 +32,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -109,35 +105,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-        var manager = new InMemoryUserDetailsManager();
-        manager.createUser(user(
-                "analyst",
-                encoder.encode("analyst_pass"),
-                null,
-                "ROLE_USER",
-                "transactions:write",
-                "alerts:read",
-                "alerts:read:all"));
-        manager.createUser(user(
-                "admin",
-                encoder.encode("admin_pass"),
-                null,
-                "ROLE_USER",
-                "ROLE_ADMIN",
-                "transactions:write",
-                "alerts:read",
-                "alerts:read:all"));
-        manager.createUser(user(
-                "customer_cust001",
-                encoder.encode("customer_pass"),
-                "CUST001",
-                "ROLE_USER",
-                "alerts:read"));
-        return manager;
-    }
-
     /**
      * Argon2id for new hashes, with bcrypt support for migration.
      * This keeps legacy passwords working while making Argon2id the default
@@ -193,19 +160,6 @@ public class SecurityConfig {
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
-
-    private CustomerScopedUserDetails user(String username,
-                                           String password,
-                                           String customerId,
-                                           String... authorities) {
-        return new CustomerScopedUserDetails(
-                username,
-                password,
-                Arrays.stream(authorities)
-                        .map(SimpleGrantedAuthority::new)
-                        .toList(),
-                customerId);
     }
 
     private String currentPrincipalName() {
