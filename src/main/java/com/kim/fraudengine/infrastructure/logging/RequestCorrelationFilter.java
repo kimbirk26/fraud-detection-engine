@@ -8,6 +8,7 @@ import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -44,6 +45,6 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
                 return trimmed;
             }
         }
-        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
     }
 }

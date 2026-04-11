@@ -18,7 +18,7 @@ public class BlacklistRule implements FraudRule {
     private final Set<String> blacklistedMerchantIds;
 
     public BlacklistRule(Set<String> blacklistedMerchantIds) {
-        this.blacklistedMerchantIds = Objects.requireNonNull(blacklistedMerchantIds);
+        this.blacklistedMerchantIds = Set.copyOf(Objects.requireNonNull(blacklistedMerchantIds));
     }
 
     @Override

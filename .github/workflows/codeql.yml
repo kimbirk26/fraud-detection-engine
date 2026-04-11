@@ -1,0 +1,26 @@
+name: "CodeQL"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+
+      - name: Build
+        run: mvn clean install
+
+      - name: Perform Analysis
+        uses: github/codeql-action/analyze@v3

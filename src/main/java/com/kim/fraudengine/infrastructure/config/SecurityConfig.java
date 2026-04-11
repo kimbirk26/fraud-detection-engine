@@ -1,6 +1,8 @@
 package com.kim.fraudengine.infrastructure.config;
 
 import com.kim.fraudengine.infrastructure.logging.RequestCorrelationFilter;
+import com.kim.fraudengine.infrastructure.security.AuthRateLimitFilter;
+import com.kim.fraudengine.infrastructure.security.AuthRateLimitProperties;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
 import jakarta.servlet.http.HttpServletResponse;
@@ -70,11 +72,32 @@ public class SecurityConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilter() {
+    public RequestCorrelationFilter requestCorrelationFilterBean() {
+        return new RequestCorrelationFilter();
+    }
+
+    @Bean
+    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilterRegistration(
+            RequestCorrelationFilter requestCorrelationFilter) {
         FilterRegistrationBean<RequestCorrelationFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new RequestCorrelationFilter());
+        registration.setFilter(requestCorrelationFilter);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         registration.addUrlPatterns("/*");
+        return registration;
+    }
+
+    @Bean
+    public AuthRateLimitFilter authRateLimitFilterBean(AuthRateLimitProperties properties) {
+        return new AuthRateLimitFilter(properties);
+    }
+
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(
+            AuthRateLimitFilter authRateLimitFilter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(authRateLimitFilter);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        registration.addUrlPatterns("/api/v1/auth/token");
         return registration;
     }
 
@@ -144,17 +167,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
-                HttpMethod.PUT.name(),
-                HttpMethod.PATCH.name(),
-                HttpMethod.DELETE.name(),
                 HttpMethod.OPTIONS.name()));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                RequestCorrelationFilter.CORRELATION_HEADER));
+        configuration.setExposedHeaders(List.of(RequestCorrelationFilter.CORRELATION_HEADER));
         configuration.setAllowCredentials(false);
 
         var source = new UrlBasedCorsConfigurationSource();

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.kim.fraudengine.domain.model.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,19 @@ class BlacklistRuleTest {
     assertThat(result.triggered()).isTrue();
     assertThat(result.severity()).isEqualTo(Severity.HIGH);
     assertThat(result.reason()).contains("MERCH_BAD_001");
+  }
+
+  @Test
+  void shouldDefensivelyCopyBlacklistedMerchantIds() {
+    Set<String> merchantIds = new HashSet<>();
+    merchantIds.add("MERCH_BAD_001");
+    BlacklistRule copiedRule = new BlacklistRule(merchantIds);
+
+    merchantIds.add("MERCH_INJECTED_LATER");
+
+    RuleResult result = copiedRule.evaluate(context(transaction("MERCH_INJECTED_LATER")));
+
+    assertThat(result.triggered()).isFalse();
   }
 
   private TransactionContext context(TransactionEvent tx) {

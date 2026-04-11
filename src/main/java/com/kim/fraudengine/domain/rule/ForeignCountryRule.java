@@ -6,6 +6,7 @@ import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 
 public class ForeignCountryRule implements FraudRule {
 
@@ -22,7 +23,7 @@ public class ForeignCountryRule implements FraudRule {
             throw new IllegalArgumentException("minimumAmount must be non-null and non-negative");
         }
 
-        this.homeCountryCode = homeCountryCode.trim().toUpperCase();
+        this.homeCountryCode = homeCountryCode.trim().toUpperCase(Locale.ROOT);
         this.minimumAmount = minimumAmount;
     }
 
@@ -39,7 +40,7 @@ public class ForeignCountryRule implements FraudRule {
             return RuleResult.pass(ruleName());
         }
 
-        String normalizedCountry = transactionCountry.trim().toUpperCase();
+        String normalizedCountry = transactionCountry.trim().toUpperCase(Locale.ROOT);
 
         if (transaction.amount().compareTo(minimumAmount) < 0
             || normalizedCountry.equals(homeCountryCode)) {

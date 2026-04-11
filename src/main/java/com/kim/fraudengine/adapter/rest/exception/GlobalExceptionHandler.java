@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestControllerAdvice
@@ -94,13 +95,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String traceId = newTraceId();
+        Class<?> requiredType = ex.getRequiredType();
 
         String message = String.format(
                 "Invalid value '%s' for parameter '%s'%s.",
                 ex.getValue(),
                 ex.getName(),
-                ex.getRequiredType() != null
-                        ? " — expected " + ex.getRequiredType().getSimpleName()
+                requiredType != null
+                        ? " — expected " + requiredType.getSimpleName()
                         : ""
         );
 
@@ -140,7 +142,7 @@ public class GlobalExceptionHandler {
         if (correlationId != null && !correlationId.isBlank()) {
             return correlationId;
         }
-        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
     }
 
     private String fieldMessage(FieldError fe) {

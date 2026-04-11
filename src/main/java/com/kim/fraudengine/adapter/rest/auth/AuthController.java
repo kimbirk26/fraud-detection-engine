@@ -11,10 +11,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -77,14 +82,14 @@ public class AuthController {
                     : jwtService.generateToken(auth.getName(), roles, customerId);
             return ResponseEntity.ok(TokenResponse.bearer(token, expiryMinutes));
 
-        } catch (BadCredentialsException e) {
-            securityLog.warn("event=login_failure username={} path={} remote={} reason=bad_credentials",
+        } catch (AuthenticationException e) {
+            securityLog.warn("event=login_failure username={} path={} remote={} reason={}",
                     request.username(),
                     httpRequest.getRequestURI(),
-                    httpRequest.getRemoteAddr());
-            // Return 401, not 403 — the request is valid but credentials are wrong
-            // Return the same message whether username or password is wrong —
-            // prevents username enumeration attacks
+                    httpRequest.getRemoteAddr(),
+                    authenticationFailureReason(e));
+            // Return the same response for all authentication failures to avoid
+            // leaking account-state or username validity details.
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorBody("Invalid credentials"));
         }
@@ -95,6 +100,25 @@ public class AuthController {
             return customerScopedPrincipal.customerId();
         }
         return null;
+    }
+
+    private String authenticationFailureReason(AuthenticationException exception) {
+        if (exception instanceof BadCredentialsException) {
+            return "bad_credentials";
+        }
+        if (exception instanceof DisabledException) {
+            return "account_disabled";
+        }
+        if (exception instanceof LockedException) {
+            return "account_locked";
+        }
+        if (exception instanceof AccountExpiredException) {
+            return "account_expired";
+        }
+        if (exception instanceof CredentialsExpiredException) {
+            return "credentials_expired";
+        }
+        return "authentication_failed";
     }
 
     // Simple inline record — only used for the error case in this controller

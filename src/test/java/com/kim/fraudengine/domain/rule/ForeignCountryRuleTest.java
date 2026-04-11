@@ -9,6 +9,7 @@ import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,21 @@ class ForeignCountryRuleTest {
     RuleResult result = rule.evaluate(context(" ", "2500.00"));
 
     assertThat(result.triggered()).isFalse();
+  }
+
+  @Test
+  void shouldNormalizeCountryCodesWithLocaleRoot() {
+    Locale previous = Locale.getDefault();
+    Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+    try {
+      ForeignCountryRule localeSafeRule = new ForeignCountryRule("in", new BigDecimal("1000.00"));
+
+      RuleResult result = localeSafeRule.evaluate(context("IN", "2500.00"));
+
+      assertThat(result.triggered()).isFalse();
+    } finally {
+      Locale.setDefault(previous);
+    }
   }
 
   private TransactionContext context(String countryCode, String amount) {

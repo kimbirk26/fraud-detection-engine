@@ -8,6 +8,10 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponse(int status, String error, String message, String traceId, Instant timestamp,
                             List<FieldError> fieldErrors) {
+    public ErrorResponse {
+        fieldErrors = fieldErrors == null ? null : List.copyOf(fieldErrors);
+    }
+
     public static ErrorResponse of(int status, String error, String message, String traceId) {
         return new ErrorResponse(status, error, message, traceId, Instant.now(), null);
     }

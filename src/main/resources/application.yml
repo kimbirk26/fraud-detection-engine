@@ -50,10 +50,23 @@ app:
     velocity:
       max-transactions: ${APP_RULES_VELOCITY_MAX_TRANSACTIONS:5}
       window-minutes: ${APP_RULES_VELOCITY_WINDOW_MINUTES:10}
+  rate-limit:
+    auth:
+      capacity: 5           # burst: up to 5 consecutive attempts
+      refill-per-minute: 5  # steady-state: 5 attempts per minute per IP
+      trust-forwarded-headers: false
+      trusted-proxies: []
+      entry-ttl-minutes: 60
+      max-tracked-clients: 10000
+      cleanup-interval: 100
   jwt: # Minimum 32 characters for HS256. In production: load from AWS Secrets Manager.
     # Generate a strong secret with: openssl rand -base64 48
     secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
     expiry-minutes: 60
+  cors:
+    allowed-origins: []
   auth:
     bootstrap:
       enabled: false
