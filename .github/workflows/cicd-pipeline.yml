@@ -1,6 +1,7 @@
 name: 'Banking-Grade CI/CD Security Pipeline'
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -11,8 +12,6 @@ on:
       - develop
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
   JAVA_VERSION: '21'
 
 jobs:
@@ -30,6 +29,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: true
         continue-on-error: false
 
@@ -69,7 +69,7 @@ jobs:
         continue-on-error: false
 
       - name: Upload Qodana Results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
@@ -92,7 +92,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -105,10 +105,10 @@ jobs:
           cache: 'maven'
 
       - name: Build Project for CodeQL
-        run: mvn clean install -DskipTests=true -q
+        run: ./mvnw clean install -DskipTests=true -q
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:java"
 
@@ -145,7 +145,7 @@ jobs:
         continue-on-error: false
 
       - name: Upload Dependency-Check Results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: reports/dependency-check-report.sarif
@@ -173,7 +173,7 @@ jobs:
           cache: 'maven'
 
       - name: Build for SonarQube
-        run: mvn clean verify -Ddependency-check.skip=true -Dspotbugs.skip=true -q
+        run: ./mvnw clean verify -Ddependency-check.skip=true -Dspotbugs.skip=true -q
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -233,7 +233,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy Results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -282,7 +282,7 @@ jobs:
           cache: 'maven'
 
       - name: Generate CycloneDX SBOM (Maven)
-        run: mvn cyclonedx:makeAggregate -DoutputFormat=json -q
+        run: ./mvnw cyclonedx:makeAggregate -DoutputFormat=json -q
         continue-on-error: true
 
       - name: Install Syft

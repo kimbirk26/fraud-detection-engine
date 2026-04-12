@@ -1,6 +1,7 @@
 package com.kim.fraudengine.domain.model;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,6 +28,6 @@ public record FraudAlert(
                 triggered,
                 highest,
                 AlertStatus.OPEN,
-                Instant.now());
+                Instant.now().truncatedTo(ChronoUnit.MICROS));
     }
 }

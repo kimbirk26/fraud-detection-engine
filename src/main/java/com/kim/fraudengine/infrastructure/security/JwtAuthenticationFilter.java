@@ -85,15 +85,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (AuthenticationException e) {
-            securityLog.warn("event=jwt_validation_failed reason={}", authenticationFailureReason(e));
-            commenceUnauthorized(response);
+            rejectUnauthorized(response, authenticationFailureReason(e), null);
             return;
         } catch (Exception e) {
-            securityLog.warn(
-                    "event=jwt_validation_failed reason=unexpected_exception errorType={}",
-                    e.getClass().getSimpleName());
-
-            commenceUnauthorized(response);
+            rejectUnauthorized(response, "unexpected_exception", e);
             return;
         }
 
@@ -144,6 +139,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return null;
         }
         return normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private void rejectUnauthorized(
+            HttpServletResponse response,
+            String reason,
+            Exception exception) throws IOException {
+        if (exception == null) {
+            securityLog.warn("event=jwt_validation_failed reason={}", reason);
+        } else {
+            securityLog.warn(
+                    "event=jwt_validation_failed reason={} errorType={}",
+                    reason,
+                    exception.getClass().getSimpleName());
+        }
+        commenceUnauthorized(response);
     }
 
     private void commenceUnauthorized(HttpServletResponse response) throws IOException {

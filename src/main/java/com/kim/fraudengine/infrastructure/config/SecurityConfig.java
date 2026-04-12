@@ -102,6 +102,15 @@ public class SecurityConfig {
     }
 
     @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
     @SuppressWarnings("java:S4502")
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtAuthenticationFilter jwtAuthenticationFilter,
