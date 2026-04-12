@@ -61,10 +61,8 @@ jobs:
         uses: JetBrains/qodana-action@v2025.3.2
         with:
           args: >
-            --run-promo-checks
+            --run-promo=true
             --fail-threshold=50
-            --report-as-artifact=true
-            --detect-secret-scanning=true
           upload-result: true
           cache-default-branch-only: false
         env:
