@@ -41,9 +41,11 @@ jobs:
     name: Qodana - IntelliJ SAST Analysis
     runs-on: ubuntu-latest
     needs: [ gitleaks-scan ]
+
     permissions:
       contents: read
       security-events: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -68,13 +70,18 @@ jobs:
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
+      # Optional debug (helps if anything breaks later)
+      - name: Debug SARIF path
+        if: always()
+        run: ls -R ${{ runner.temp }}/qodana || true
+
       - name: Upload Qodana Results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always() && github.event.pull_request.head.repo.fork == false
+        if: >
+          always() && (github.event_name != 'pull_request' ||github.event.pull_request.head.repo.fork == false)
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
           category: 'Qodana'
-
   # ==================== ADVANCED STATIC CODE ANALYSIS ====================
   codeql-analysis:
     name: CodeQL - Advanced SAST
