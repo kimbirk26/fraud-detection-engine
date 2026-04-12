@@ -7,17 +7,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.AccountStatusUserDetailsChecker;
 import org.springframework.security.authentication.AccountExpiredException;
+import org.springframework.security.authentication.AccountStatusUserDetailsChecker;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsChecker;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -43,11 +43,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -57,34 +65,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String username = jwtService.extractUsername(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                var userDetails = userDetailsService.loadUserByUsername(username);
-                userDetailsChecker.check(userDetails);
-
-                if (jwtService.isTokenValid(token, userDetails.getUsername())) {
-                    String customerIdFromToken = jwtService.extractCustomerId(token);
-                    if (!isCustomerScopeValid(userDetails, customerIdFromToken)) {
-                        securityLog.warn("event=jwt_customer_scope_mismatch reason=customer_scope_mismatch");
-                        commenceUnauthorized(response);
-                        return;
-                    }
-
-                    var principal = new AuthenticatedRequestPrincipal(username, resolveCurrentCustomerId(userDetails));
-                    var authToken = new UsernamePasswordAuthenticationToken(
-                            principal,
-                            null,
-                            userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.debug("Authenticated JWT principal for current request");
-                } else {
-                    securityLog.warn("event=jwt_validation_failed reason=invalid_signature_or_claims");
-                    commenceUnauthorized(response);
-                    return;
-                }
+            if (username == null || username.isBlank()) {
+                rejectUnauthorized(response, "missing_username_claim", null);
+                return;
             }
+
+            var userDetails = userDetailsService.loadUserByUsername(username);
+            userDetailsChecker.check(userDetails);
+
+            if (!jwtService.isTokenValid(token, userDetails.getUsername())) {
+                securityLog.warn("event=jwt_validation_failed reason=invalid_signature_or_claims");
+                commenceUnauthorized(response);
+                return;
+            }
+
+            String customerIdFromToken = jwtService.extractCustomerId(token);
+            if (!isCustomerScopeValid(userDetails, customerIdFromToken)) {
+                securityLog.warn("event=jwt_customer_scope_mismatch reason=customer_scope_mismatch");
+                commenceUnauthorized(response);
+                return;
+            }
+
+            var principal = new AuthenticatedRequestPrincipal(
+                    username,
+                    resolveCurrentCustomerId(userDetails));
+
+            var authToken = new UsernamePasswordAuthenticationToken(
+                    principal,
+                    null,
+                    userDetails.getAuthorities());
+
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+            log.debug("Authenticated JWT principal for current request");
+
         } catch (AuthenticationException e) {
             rejectUnauthorized(response, authenticationFailureReason(e), null);
             return;
@@ -96,7 +110,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean isCustomerScopeValid(org.springframework.security.core.userdetails.UserDetails userDetails, String customerIdFromToken) {
+    private boolean isCustomerScopeValid(
+            org.springframework.security.core.userdetails.UserDetails userDetails,
+            String customerIdFromToken) {
         if (userDetails instanceof CustomerScopedPrincipal customerScopedPrincipal) {
             return Objects.equals(
                     normalizeCustomerId(customerScopedPrincipal.customerId()),
@@ -105,7 +121,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return true;
     }
 
-    private String resolveCurrentCustomerId(org.springframework.security.core.userdetails.UserDetails userDetails) {
+    private String resolveCurrentCustomerId(
+            org.springframework.security.core.userdetails.UserDetails userDetails) {
         if (userDetails instanceof CustomerScopedPrincipal customerScopedPrincipal) {
             return customerScopedPrincipal.customerId();
         }
@@ -142,7 +159,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return normalized.toUpperCase(Locale.ROOT);
     }
 
-    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+    @SuppressFBWarnings(
+            value = "CRLF_INJECTION_LOGS",
             justification = "reason is a fixed internal constant from authenticationFailureReason(); exception class name contains only safe characters")
     private void rejectUnauthorized(
             HttpServletResponse response,
