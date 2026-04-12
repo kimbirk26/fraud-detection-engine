@@ -45,6 +45,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
 
     steps:
       - name: Checkout Code
@@ -89,6 +90,7 @@ jobs:
     needs: [ qodana-analysis ]
     permissions:
       contents: read
+      actions: read
       security-events: write
     strategy:
       fail-fast: false
