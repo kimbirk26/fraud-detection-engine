@@ -130,7 +130,7 @@ jobs:
         with:
           project: 'fraud-detection-engine'
           path: '.'
-          format: 'JSON,SARIF'
+          format: 'SARIF'
           out: 'reports'
           args: >
             --enableRetired
