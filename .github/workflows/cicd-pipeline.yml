@@ -107,8 +107,8 @@ jobs:
           cache: 'maven'
 
       - name: Build Project for CodeQL
-        run: ./mvnw clean install -DskipTests=true -q
-
+        run: ./mvnw clean install -DskipTests=true -Ddependency-check.skip=true -q
+        
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
