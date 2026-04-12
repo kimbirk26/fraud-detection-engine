@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
       - develop
   pull_request:
     branches:
-      - main
+      - master
       - develop
 
 env:
@@ -345,8 +345,8 @@ jobs:
         run: |
           echo "=== Commit Signature Verification ==="
           
-          TOTAL_COMMITS=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
-          SIGNED_COMMITS=$(git log --pretty=format:"%H %G?" origin/main..HEAD 2>/dev/null | grep -c "G$" || echo 0)
+          TOTAL_COMMITS=$(git rev-list --count origin/master..HEAD 2>/dev/null || echo 0)
+          SIGNED_COMMITS=$(git log --pretty=format:"%H %G?" origin/master..HEAD 2>/dev/null | grep -c "G$" || echo 0)
           
           echo "Total commits: $TOTAL_COMMITS"
           echo "Signed commits: $SIGNED_COMMITS"
@@ -363,7 +363,7 @@ jobs:
       - name: Check Author Attribution
         run: |
           echo "=== Author Attribution ==="
-          git log --format="%an <%ae>" origin/main..HEAD 2>/dev/null | sort | uniq -c || echo "No commits to verify"
+          git log --format="%an <%ae>" origin/master..HEAD 2>/dev/null | sort | uniq -c || echo "No commits to verify"
           echo "PASSED All commits have proper author attribution"
         continue-on-error: true
 
