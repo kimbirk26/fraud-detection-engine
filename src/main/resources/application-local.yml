@@ -1,0 +1,42 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+app:
+  jwt:
+    # Local-only signing key to make the profile self-contained. Never enable this profile in prod.
+    secret: ${LOCAL_JWT_SECRET:fraud-engine-local-profile-jwt-secret-32}
+    issuer: ${LOCAL_JWT_ISSUER:fraud-detection-engine-local}
+    audience: ${LOCAL_JWT_AUDIENCE:fraud-detection-engine-api-local}
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+  auth:
+    bootstrap:
+      enabled: true
+      users:
+        - username: analyst
+          password: ${LOCAL_ANALYST_PASSWORD:analyst_pass}
+          authorities:
+            - ROLE_USER
+            - transactions:write
+            - alerts:read
+            - alerts:read:all
+        - username: admin
+          password: ${LOCAL_ADMIN_PASSWORD:admin_pass}
+          authorities:
+            - ROLE_USER
+            - ROLE_ADMIN
+            - transactions:write
+            - alerts:read
+            - alerts:read:all
+        - username: customer_cust001
+          password: ${LOCAL_CUSTOMER_PASSWORD:customer_pass}
+          customerId: CUST001
+          authorities:
+            - ROLE_USER
+            - alerts:read

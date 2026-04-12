@@ -8,8 +8,8 @@ RUN mvn -q package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup -S fraud && adduser -S fraud -G fraud
+RUN addgroup -g 10001 -S fraud && adduser -u 10001 -S fraud -G fraud
 COPY --from=builder /app/target/*.jar app.jar
-USER fraud
+USER 10001:10001
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

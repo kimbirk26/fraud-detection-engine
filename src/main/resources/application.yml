@@ -30,14 +30,14 @@ spring:
 app:
   kafka:
     topics:
-      transactions: transactions.raw
-      transactions-dlt: transactions.raw.dlt
-      fraud-alerts: fraud.alerts
-    consumer-group: fraud-rule-engine-group
+      transactions: ${APP_KAFKA_TOPICS_TRANSACTIONS:transactions.raw}
+      transactions-dlt: ${APP_KAFKA_TOPICS_TRANSACTIONS_DLT:transactions.raw.dlt}
+      fraud-alerts: ${APP_KAFKA_TOPICS_FRAUD_ALERTS:fraud.alerts}
+    consumer-group: ${APP_KAFKA_CONSUMER_GROUP:fraud-rule-engine-group}
   rules:
     amount:
-      high-threshold: 50000.00
-      medium-threshold: 10000.00
+      high-threshold: ${APP_RULES_AMOUNT_HIGH_THRESHOLD:50000.00}
+      medium-threshold: ${APP_RULES_AMOUNT_MEDIUM_THRESHOLD:10000.00}
     blacklist:
       merchant-ids: MERCH_FRAUD_001,MERCH_FRAUD_002,MERCH_FRAUD_003
     out-of-hours:
@@ -64,12 +64,20 @@ app:
     secret: ${JWT_SECRET}
     issuer: ${JWT_ISSUER}
     audience: ${JWT_AUDIENCE}
-    expiry-minutes: 60
+    expiry-minutes: ${APP_JWT_EXPIRY_MINUTES:60}
   cors:
     allowed-origins: []
   auth:
     bootstrap:
       enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
+    tagsSorter: alpha
+  api-docs:
+    path: /v3/api-docs
 
 management:
   endpoints:

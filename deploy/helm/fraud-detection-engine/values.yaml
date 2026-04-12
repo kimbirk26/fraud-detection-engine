@@ -1,0 +1,159 @@
+replicaCount: 2
+
+image:
+  repository: fraud-detection-engine
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: fraud.example.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+javaToolOptions: "-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+springProfilesActive: ""
+
+database:
+  host: postgres.default.svc.cluster.local
+  port: 5432
+  name: frauddb
+
+kafka:
+  bootstrapServers: kafka.default.svc.cluster.local:9092
+  topics:
+    transactions: transactions.raw
+    transactionsDlt: transactions.raw.dlt
+    fraudAlerts: fraud.alerts
+  consumerGroup: fraud-rule-engine-group
+
+jwt:
+  expiryMinutes: 60
+
+cors:
+  allowedOrigins: []
+
+rules:
+  amount:
+    highThreshold: "50000.00"
+    mediumThreshold: "10000.00"
+  foreignCountry:
+    homeCountryCode: ZA
+    minimumAmount: "1000.00"
+  velocity:
+    maxTransactions: "5"
+    windowMinutes: "10"
+
+authBootstrap:
+  enabled: false
+
+probes:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  startup:
+    path: /actuator/health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 18
+
+secrets:
+  create: false
+  existingSecretName: ""
+  data:
+    dbUser: ""
+    dbPassword: ""
+    jwtSecret: ""
+    jwtIssuer: ""
+    jwtAudience: ""
+
+externalSecret:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  targetSecretName: ""
+  data:
+    dbUser:
+      key: ""
+      property: dbUser
+    dbPassword:
+      key: ""
+      property: dbPassword
+    jwtSecret:
+      key: ""
+      property: jwtSecret
+    jwtIssuer:
+      key: ""
+      property: jwtIssuer
+    jwtAudience:
+      key: ""
+      property: jwtAudience

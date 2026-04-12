@@ -1,0 +1,107 @@
+name: Deploy to Amazon EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+      aws_region:
+        description: AWS region
+        required: true
+        default: af-south-1
+        type: string
+      ecr_repository:
+        description: ECR repository name
+        required: true
+        default: fraud-detection-engine
+        type: string
+      eks_cluster_name:
+        description: EKS cluster name
+        required: true
+        default: fraud-platform
+        type: string
+      kubernetes_namespace:
+        description: Kubernetes namespace
+        required: true
+        default: fraud
+        type: string
+      helm_values_file:
+        description: Helm values file to use for deployment
+        required: true
+        default: deploy/helm/fraud-detection-engine/values-eks.yaml
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ${{ inputs.aws_region }}
+      ECR_REPOSITORY: ${{ inputs.ecr_repository }}
+      EKS_CLUSTER_NAME: ${{ inputs.eks_cluster_name }}
+      KUBERNETES_NAMESPACE: ${{ inputs.kubernetes_namespace }}
+      HELM_VALUES_FILE: ${{ inputs.helm_values_file }}
+      IMAGE_TAG: ${{ github.sha }}
+      RELEASE_NAME: fraud-detection-engine
+      CHART_PATH: deploy/helm/fraud-detection-engine
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image URI
+        run: |
+          echo "IMAGE_REPOSITORY=${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_URI }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
+            --namespace "$KUBERNETES_NAMESPACE" \
+            --create-namespace \
+            -f "$HELM_VALUES_FILE" \
+            --set image.repository="$IMAGE_REPOSITORY" \
+            --set image.tag="$IMAGE_TAG"
+
+      - name: Verify rollout
+        run: kubectl rollout status deployment/"$RELEASE_NAME" -n "$KUBERNETES_NAMESPACE" --timeout=5m

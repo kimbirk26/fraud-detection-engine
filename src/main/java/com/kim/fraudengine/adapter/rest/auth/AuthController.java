@@ -4,6 +4,12 @@ import com.kim.fraudengine.adapter.rest.dto.TokenRequest;
 import com.kim.fraudengine.adapter.rest.dto.TokenResponse;
 import com.kim.fraudengine.infrastructure.security.CustomerScopedPrincipal;
 import com.kim.fraudengine.infrastructure.security.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -38,6 +44,7 @@ import java.util.List;
  * brute-force attacks. Spring Security's built-in lockout or a
  * Bucket4j rate limiter work well here.
  */
+@Tag(name = "Authentication", description = "Obtain a JWT bearer token")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -64,6 +71,13 @@ public class AuthController {
      * 401 on bad credentials — deliberately vague ("invalid credentials")
      * to avoid confirming whether the username exists.
      */
+    @Operation(summary = "Issue a JWT token",
+               description = "Exchange username and password for a signed JWT bearer token. " +
+                             "This endpoint does not require an existing token.")
+    @ApiResponse(responseCode = "200", description = "Token issued",
+                 content = @Content(schema = @Schema(implementation = TokenResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    @SecurityRequirements
     @PostMapping("/token")
     public ResponseEntity<?> token(@Valid @RequestBody TokenRequest request,
                                    HttpServletRequest httpRequest) {
