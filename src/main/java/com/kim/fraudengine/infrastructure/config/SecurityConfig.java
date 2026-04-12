@@ -1,7 +1,9 @@
 package com.kim.fraudengine.infrastructure.config;
 
 import com.kim.fraudengine.infrastructure.logging.RequestCorrelationFilter;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import com.kim.fraudengine.infrastructure.security.AuthRateLimitFilter;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.kim.fraudengine.infrastructure.security.AuthRateLimitProperties;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
@@ -48,9 +50,9 @@ public class SecurityConfig {
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             securityLog.warn("event=authentication_required path={} remote={} reason={}",
-                    request.getRequestURI(),
-                    request.getRemoteAddr(),
-                    authException.getMessage());
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
+                    SensitiveLogValueSanitizer.normalizeForLog(authException.getMessage()));
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Unauthorized\"}");
@@ -61,10 +63,10 @@ public class SecurityConfig {
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
             securityLog.warn("event=access_denied principal={} path={} remote={} reason={}",
-                    currentPrincipalName(),
-                    request.getRequestURI(),
-                    request.getRemoteAddr(),
-                    accessDeniedException.getMessage());
+                    SensitiveLogValueSanitizer.maskPrincipal(currentPrincipalName()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
+                    SensitiveLogValueSanitizer.normalizeForLog(accessDeniedException.getMessage()));
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Forbidden\"}");
@@ -112,6 +114,8 @@ public class SecurityConfig {
 
     @Bean
     @SuppressWarnings("java:S4502")
+    @SuppressFBWarnings(value = "SPRING_CSRF_PROTECTION_DISABLED",
+            justification = "Stateless JWT API - no sessions, cookies, or form login; CSRF not applicable")
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtAuthenticationFilter jwtAuthenticationFilter,
                                     AuthenticationEntryPoint authenticationEntryPoint,

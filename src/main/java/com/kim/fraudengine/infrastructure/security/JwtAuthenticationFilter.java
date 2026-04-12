@@ -1,5 +1,6 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -141,6 +142,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return normalized.toUpperCase(Locale.ROOT);
     }
 
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "reason is a fixed internal constant from authenticationFailureReason(); exception class name contains only safe characters")
     private void rejectUnauthorized(
             HttpServletResponse response,
             String reason,

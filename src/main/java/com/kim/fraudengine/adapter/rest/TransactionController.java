@@ -7,6 +7,7 @@ import com.kim.fraudengine.adapter.rest.mapper.TransactionMapper;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
 import com.kim.fraudengine.domain.port.outbound.TransactionEventPublisher;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -39,6 +40,7 @@ public class TransactionController {
         this.transactionMapper = transactionMapper;
     }
 
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
     @Operation(summary = "Submit transaction asynchronously",
                description = "Publishes the transaction to Kafka for background processing. Returns 202 immediately.")
     @ApiResponse(responseCode = "202", description = "Accepted — queued for processing")
@@ -52,6 +54,7 @@ public class TransactionController {
     }
 
 
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
     @Operation(summary = "Submit transaction synchronously",
                description = "Processes the transaction inline and returns a fraud alert if rules triggered, or 204 if clean.")
     @ApiResponse(responseCode = "200", description = "Fraud detected — alert returned",

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class JwtService {
+public final class JwtService {
 
     private final SecretKey signingKey;
     private final long expiryMinutes;

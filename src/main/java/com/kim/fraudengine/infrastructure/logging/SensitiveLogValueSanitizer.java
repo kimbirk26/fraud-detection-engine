@@ -59,7 +59,7 @@ public final class SensitiveLogValueSanitizer {
         if (principal == null || principal.isBlank()) {
             return "anonymous";
         }
-        if ("anonymous".equalsIgnoreCase(principal)) {
+        if ("anonymous".equals(principal.toLowerCase(Locale.ROOT))) {
             return "anonymous";
         }
         return maskIdentifier(principal);
@@ -109,7 +109,7 @@ public final class SensitiveLogValueSanitizer {
         return normalized.substring(0, 2) + "***" + normalized.substring(normalized.length() - 2);
     }
 
-    static String normalizeForLog(String value) {
+    public static String normalizeForLog(String value) {
         if (value == null) {
             return "";
         }

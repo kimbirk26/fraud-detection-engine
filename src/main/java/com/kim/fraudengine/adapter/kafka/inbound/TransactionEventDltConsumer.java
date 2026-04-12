@@ -1,5 +1,6 @@
 package com.kim.fraudengine.adapter.kafka.inbound;
 
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,7 @@ public class TransactionEventDltConsumer {
 
     private String headerString(ConsumerRecord<?, ?> record, String name) {
         var header = record.headers().lastHeader(name);
-        return header == null ? "unknown" : new String(header.value(), StandardCharsets.UTF_8);
+        String raw = header == null ? "unknown" : new String(header.value(), StandardCharsets.UTF_8);
+        return SensitiveLogValueSanitizer.normalizeForLog(raw);
     }
 }

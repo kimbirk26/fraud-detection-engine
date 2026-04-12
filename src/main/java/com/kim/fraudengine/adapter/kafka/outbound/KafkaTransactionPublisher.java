@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.outbound.TransactionEventPublisher;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,8 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
     private final ObjectMapper objectMapper;
     private final String topic;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singletons - effectively immutable after context initialization")
     public KafkaTransactionPublisher(KafkaTemplate<String, String> kafkaTemplate,
                                      ObjectMapper objectMapper,
                                      @Value("${app.kafka.topics.transactions}") String topic) {
@@ -37,6 +40,8 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
     }
 
     @Override
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "transactionEvent.id() is a UUID and topic is a config string - neither can contain CRLF")
     public void publish(TransactionEvent transactionEvent) {
         try {
             String payload = objectMapper.writeValueAsString(transactionEvent);

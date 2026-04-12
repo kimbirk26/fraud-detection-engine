@@ -3,6 +3,7 @@ package com.kim.fraudengine.adapter.persistence;
 import com.kim.fraudengine.adapter.persistence.entity.ProcessedTransactionEntity;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,8 @@ public class TransactionHistoryRepositoryAdapter implements TransactionHistoryRe
     private final ProcessedTransactionJpaRepository jpaRepository;
     private final JdbcTemplate jdbcTemplate;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singleton - effectively immutable after context initialization")
     public TransactionHistoryRepositoryAdapter(
             ProcessedTransactionJpaRepository jpaRepository, JdbcTemplate jdbcTemplate) {
         this.jpaRepository = jpaRepository;

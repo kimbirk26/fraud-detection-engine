@@ -5,10 +5,12 @@ import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.math.BigDecimal;
 import java.util.Locale;
 
-public class ForeignCountryRule implements FraudRule {
+public final class ForeignCountryRule implements FraudRule {
 
     private static final String RULE_NAME = "FOREIGN_COUNTRY";
 
@@ -28,6 +30,8 @@ public class ForeignCountryRule implements FraudRule {
     }
 
     @Override
+    @SuppressFBWarnings(value = "IMPROPER_UNICODE",
+            justification = "Country codes are ASCII-only ISO 3166-1 alpha-2; Locale.ROOT is correct here")
     public RuleResult evaluate(TransactionContext transactionContext) {
         TransactionEvent transaction = transactionContext.transaction();
 

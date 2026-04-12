@@ -4,6 +4,8 @@ import com.kim.fraudengine.adapter.rest.dto.TokenRequest;
 import com.kim.fraudengine.adapter.rest.dto.TokenResponse;
 import com.kim.fraudengine.infrastructure.security.CustomerScopedPrincipal;
 import com.kim.fraudengine.infrastructure.security.JwtService;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -71,6 +73,7 @@ public class AuthController {
      * 401 on bad credentials — deliberately vague ("invalid credentials")
      * to avoid confirming whether the username exists.
      */
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional public auth endpoint")
     @Operation(summary = "Issue a JWT token",
                description = "Exchange username and password for a signed JWT bearer token. " +
                              "This endpoint does not require an existing token.")
@@ -98,9 +101,9 @@ public class AuthController {
 
         } catch (AuthenticationException e) {
             securityLog.warn("event=login_failure username={} path={} remote={} reason={}",
-                    request.username(),
-                    httpRequest.getRequestURI(),
-                    httpRequest.getRemoteAddr(),
+                    SensitiveLogValueSanitizer.maskUsername(request.username()),
+                    SensitiveLogValueSanitizer.normalizeForLog(httpRequest.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(httpRequest.getRemoteAddr()),
                     authenticationFailureReason(e));
             // Return the same response for all authentication failures to avoid
             // leaking account-state or username validity details.

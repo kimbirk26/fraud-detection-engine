@@ -1,5 +1,6 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
@@ -71,7 +72,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equalsIgnoreCase(request.getMethod());
+        return !"POST".equals(request.getMethod());
     }
 
     @Override
@@ -87,8 +88,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (bucket == null) {
             securityLog.warn(
                     "event=rate_limit_store_full path={} remote={} trackedClients={}",
-                    request.getRequestURI(),
-                    clientIp,
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(clientIp),
                     buckets.size());
             writeTooManyRequests(response, Math.max(1L, entryTtl.toSeconds()));
             return;
@@ -99,7 +100,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } else {
             securityLog.warn("event=rate_limit_exceeded path={} remote={}",
-                    request.getRequestURI(), clientIp);
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(clientIp));
             writeTooManyRequests(response, retryAfterSeconds(probe));
         }
     }

@@ -4,7 +4,7 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 
-public class VelocityRule implements FraudRule {
+public final class VelocityRule implements FraudRule {
 
     private static final String RULE_NAME = "VELOCITY_CHECK";
 

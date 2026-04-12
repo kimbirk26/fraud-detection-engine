@@ -8,6 +8,7 @@ import com.kim.fraudengine.domain.model.FraudAlert;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,6 +21,8 @@ public class AlertRepositoryAdapter implements AlertRepository {
     private final AlertJpaRepository jpaRepository;
     private final ObjectMapper objectMapper;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singleton - effectively immutable after context initialization")
     public AlertRepositoryAdapter(AlertJpaRepository jpaRepository, ObjectMapper objectMapper) {
         this.jpaRepository = jpaRepository;
         this.objectMapper = objectMapper;
