@@ -22,6 +22,7 @@
         <bcprov.version>1.78.1</bcprov.version>
         <jjwt.version>0.12.6</jjwt.version>
         <dependency-check.version>12.2.0</dependency-check.version>
+        <jacoco.version>0.8.14</jacoco.version>
         <spotbugs.version>4.9.8.3</spotbugs.version>
         <findsecbugs.version>1.12.0</findsecbugs.version>
         <spotless.version>3.4.0</spotless.version>
@@ -197,6 +198,28 @@
                         <phase>validate</phase>
                         <goals>
                             <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Test coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -102,11 +102,15 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings("java:S4502")
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtAuthenticationFilter jwtAuthenticationFilter,
                                     AuthenticationEntryPoint authenticationEntryPoint,
                                     AccessDeniedHandler accessDeniedHandler) throws Exception {
         http
+                // Safe here because this API is stateless and uses Bearer JWTs in the
+                // Authorization header only. We do not use sessions, form login,
+                // HTTP Basic, remember-me, or cookie-based authentication.
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
@@ -148,8 +152,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
-        var provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        var provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         if (userDetailsService instanceof UserDetailsPasswordService passwordService) {
             provider.setUserDetailsPasswordService(passwordService);

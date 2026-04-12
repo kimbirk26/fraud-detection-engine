@@ -173,7 +173,7 @@ jobs:
           cache: 'maven'
 
       - name: Build for SonarQube
-        run: mvn clean verify -DskipTests=true -q
+        run: mvn clean verify -Ddependency-check.skip=true -Dspotbugs.skip=true -q
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -187,6 +187,7 @@ jobs:
             -Dsonar.projectName=Fraud Detection Engine
             -Dsonar.sources=src/main
             -Dsonar.tests=src/test
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
             -Dsonar.coverage.exclusions=**/*Config.java,**/*Exception.java
             -Dsonar.cpd.exclusions=**/*DTO.java
             -Dsonar.security.hotspots.reviews.max-unchanged-days=30
