@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload Qodana Results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork == false
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
           category: 'Qodana'
