@@ -133,8 +133,8 @@ jobs:
           format: 'JSON,SARIF'
           out: 'reports'
           args: >
-            --enable-retired
-            --enable-experimental
+            --enableRetired
+            --enableExperimental
         continue-on-error: false
 
       - name: Upload Dependency-Check report artifacts
