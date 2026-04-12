@@ -16,9 +16,6 @@ public final class SensitiveLogValueSanitizer {
     private static final Pattern UUID_SEGMENT = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
-    private static final Pattern IDENTIFIER_SEGMENT = Pattern.compile(
-            "^(?i)(?:[a-z]+[_-])?[a-z]{2,}\\d{2,}[a-z0-9_-]*$");
-
     private static final String REDACTED = "[REDACTED]";
 
     private SensitiveLogValueSanitizer() {
@@ -134,10 +131,78 @@ public final class SensitiveLogValueSanitizer {
         if (segment.isEmpty()) {
             return segment;
         }
-        if (UUID_SEGMENT.matcher(segment).matches() || IDENTIFIER_SEGMENT.matcher(segment).matches()) {
+        if (UUID_SEGMENT.matcher(segment).matches() || isIdentifierSegment(segment)) {
             return "{id}";
         }
         return segment;
+    }
+
+    private static boolean isIdentifierSegment(String segment) {
+        int firstDigitIndex = findFirstDigitIndex(segment);
+        if (firstDigitIndex < 2) {
+            return false;
+        }
+
+        int digitEndIndex = firstDigitIndex;
+        while (digitEndIndex < segment.length() && isAsciiDigit(segment.charAt(digitEndIndex))) {
+            digitEndIndex++;
+        }
+        if (digitEndIndex - firstDigitIndex < 2) {
+            return false;
+        }
+
+        if (!hasValidIdentifierPrefix(segment.substring(0, firstDigitIndex))) {
+            return false;
+        }
+
+        for (int i = digitEndIndex; i < segment.length(); i++) {
+            char ch = segment.charAt(i);
+            if (!isAsciiLetter(ch) && !isAsciiDigit(ch) && ch != '_' && ch != '-') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int findFirstDigitIndex(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (isAsciiDigit(value.charAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean hasValidIdentifierPrefix(String prefix) {
+        int separatorIndex = -1;
+        for (int i = 0; i < prefix.length(); i++) {
+            char ch = prefix.charAt(i);
+            if (ch == '_' || ch == '-') {
+                if (separatorIndex >= 0) {
+                    return false;
+                }
+                separatorIndex = i;
+            } else if (!isAsciiLetter(ch)) {
+                return false;
+            }
+        }
+
+        if (separatorIndex < 0) {
+            return prefix.length() >= 2;
+        }
+
+        int prefixLetterCount = separatorIndex;
+        int coreLetterCount = prefix.length() - separatorIndex - 1;
+        return prefixLetterCount >= 1 && coreLetterCount >= 2;
+    }
+
+    private static boolean isAsciiLetter(char ch) {
+        char normalized = Character.toLowerCase(ch);
+        return normalized >= 'a' && normalized <= 'z';
+    }
+
+    private static boolean isAsciiDigit(char ch) {
+        return ch >= '0' && ch <= '9';
     }
 
     private static boolean isIdentityKey(String key) {
