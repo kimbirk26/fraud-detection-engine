@@ -18,6 +18,11 @@ public record FraudAlert(
         triggeredRules = List.copyOf(Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
     }
 
+    @Override
+    public List<RuleResult> triggeredRules() {
+        return List.copyOf(triggeredRules);
+    }
+
     public static FraudAlert from(TransactionEvent transactionEvent, List<RuleResult> triggered) {
         Severity highest =
                 triggered.stream().map(RuleResult::severity).max(Enum::compareTo).orElse(Severity.NONE);
