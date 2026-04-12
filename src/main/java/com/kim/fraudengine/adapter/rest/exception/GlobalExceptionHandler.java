@@ -17,11 +17,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+        justification = "All exception messages pass through SensitiveLogValueSanitizer.normalizeForLog() " +
+                        "which strips control characters; SpotBugs does not recognise custom sanitizers as taint-cleaners")
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -73,7 +73,10 @@ public class AuthController {
      * 401 on bad credentials — deliberately vague ("invalid credentials")
      * to avoid confirming whether the username exists.
      */
-    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional public auth endpoint")
+    @SuppressFBWarnings(value = {"SPRING_ENDPOINT", "CRLF_INJECTION_LOGS"},
+            justification = "SPRING_ENDPOINT: intentional public auth endpoint; " +
+                            "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer — " +
+                            "SpotBugs does not recognise custom sanitizers as taint-cleaners")
     @Operation(summary = "Issue a JWT token",
                description = "Exchange username and password for a signed JWT bearer token. " +
                              "This endpoint does not require an existing token.")

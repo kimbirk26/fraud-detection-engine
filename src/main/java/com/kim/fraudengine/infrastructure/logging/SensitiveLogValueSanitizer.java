@@ -59,7 +59,7 @@ public final class SensitiveLogValueSanitizer {
         if (principal == null || principal.isBlank()) {
             return "anonymous";
         }
-        if ("anonymous".equals(principal.toLowerCase(Locale.ROOT))) {
+        if ("anonymous".equals(principal)) {
             return "anonymous";
         }
         return maskIdentifier(principal);

@@ -20,6 +20,9 @@ import java.util.List;
 /**
  * Inbound adapter: consumes transaction events from Kafka and delegates to the use case.
  */
+@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+        justification = "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF; " +
+                        "SpotBugs cannot see through the ifPresent lambda to the method-level suppression")
 @Component
 public class TransactionEventConsumer {
 
@@ -45,8 +48,6 @@ public class TransactionEventConsumer {
             groupId = "${app.kafka.consumer-group}",
             containerFactory = "kafkaListenerContainerFactory"
     )
-    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-            justification = "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF")
     public void consume(@Payload String payload,
                         @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
                         @Header(KafkaHeaders.OFFSET) long offset) throws IOException {

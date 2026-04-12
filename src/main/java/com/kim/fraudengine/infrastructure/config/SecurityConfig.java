@@ -38,6 +38,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+@SuppressFBWarnings(
+        value = {"SPRING_CSRF_PROTECTION_DISABLED", "CRLF_INJECTION_LOGS"},
+        justification = "SPRING_CSRF_PROTECTION_DISABLED: stateless JWT API — no sessions, cookies, or form login; " +
+                        "CSRF not applicable. Annotation must be at class level because csrf.disable() is called " +
+                        "inside a lambda (synthetic class) not covered by method-level suppression. " +
+                        "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer; " +
+                        "log callbacks are lambdas whose synthetic classes are not covered by method-level suppression")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -114,8 +121,6 @@ public class SecurityConfig {
 
     @Bean
     @SuppressWarnings("java:S4502")
-    @SuppressFBWarnings(value = "SPRING_CSRF_PROTECTION_DISABLED",
-            justification = "Stateless JWT API - no sessions, cookies, or form login; CSRF not applicable")
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtAuthenticationFilter jwtAuthenticationFilter,
                                     AuthenticationEntryPoint authenticationEntryPoint,
