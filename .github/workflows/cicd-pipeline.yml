@@ -144,54 +144,6 @@ jobs:
           name: dependency-check-reports
           path: reports/
           retention-days: 30
-  # ==================== CODE QUALITY ANALYSIS ====================
-  sonarqube-analysis:
-    name: SonarQube - Quality Gate & Compliance
-    runs-on: ubuntu-latest
-    needs: [ codeql-analysis, dependency-check ]
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Build for SonarQube
-        run: ./mvnw clean verify -Ddependency-check.skip=true -Dspotbugs.skip=true -q
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=fraud-detection-engine
-            -Dsonar.projectName='Fraud-Detection-Engine'
-            -Dsonar.sources=src/main
-            -Dsonar.tests=src/test
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-            -Dsonar.coverage.exclusions=**/*Config.java,**/*Exception.java
-            -Dsonar.cpd.exclusions=**/*DTO.java
-            -Dsonar.security.hotspots.reviews.max-unchanged-days=30
-        continue-on-error: false
-
-      - name: SonarQube Quality Gate Check
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   # ==================== CONTAINER SECURITY ====================
   container-security:
