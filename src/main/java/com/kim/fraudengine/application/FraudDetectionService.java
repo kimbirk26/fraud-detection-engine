@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,7 +64,9 @@ public class FraudDetectionService implements ProcessTransactionUseCase, GetAler
         try {
             Optional<FraudAlert> result =
                     transactionOperations.execute(status -> processInTransaction(transactionEvent));
-            return result == null ? Optional.empty() : result;
+            return Objects.requireNonNull(
+                    result,
+                    "Transaction callback returned null Optional");
         } catch (DataIntegrityViolationException ex) {
             return resolveConcurrentDuplicate(transactionEvent, ex);
         }
