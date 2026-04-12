@@ -4,6 +4,14 @@ import com.kim.fraudengine.adapter.rest.dto.TokenRequest;
 import com.kim.fraudengine.adapter.rest.dto.TokenResponse;
 import com.kim.fraudengine.infrastructure.security.CustomerScopedPrincipal;
 import com.kim.fraudengine.infrastructure.security.JwtService;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -11,10 +19,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +46,7 @@ import java.util.List;
  * brute-force attacks. Spring Security's built-in lockout or a
  * Bucket4j rate limiter work well here.
  */
+@Tag(name = "Authentication", description = "Obtain a JWT bearer token")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -59,6 +73,17 @@ public class AuthController {
      * 401 on bad credentials — deliberately vague ("invalid credentials")
      * to avoid confirming whether the username exists.
      */
+    @SuppressFBWarnings(value = {"SPRING_ENDPOINT", "CRLF_INJECTION_LOGS"},
+            justification = "SPRING_ENDPOINT: intentional public auth endpoint; " +
+                            "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer — " +
+                            "SpotBugs does not recognise custom sanitizers as taint-cleaners")
+    @Operation(summary = "Issue a JWT token",
+               description = "Exchange username and password for a signed JWT bearer token. " +
+                             "This endpoint does not require an existing token.")
+    @ApiResponse(responseCode = "200", description = "Token issued",
+                 content = @Content(schema = @Schema(implementation = TokenResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    @SecurityRequirements
     @PostMapping("/token")
     public ResponseEntity<?> token(@Valid @RequestBody TokenRequest request,
                                    HttpServletRequest httpRequest) {
@@ -77,14 +102,14 @@ public class AuthController {
                     : jwtService.generateToken(auth.getName(), roles, customerId);
             return ResponseEntity.ok(TokenResponse.bearer(token, expiryMinutes));
 
-        } catch (BadCredentialsException e) {
-            securityLog.warn("event=login_failure username={} path={} remote={} reason=bad_credentials",
-                    request.username(),
-                    httpRequest.getRequestURI(),
-                    httpRequest.getRemoteAddr());
-            // Return 401, not 403 — the request is valid but credentials are wrong
-            // Return the same message whether username or password is wrong —
-            // prevents username enumeration attacks
+        } catch (AuthenticationException e) {
+            securityLog.warn("event=login_failure username={} path={} remote={} reason={}",
+                    SensitiveLogValueSanitizer.maskUsername(request.username()),
+                    SensitiveLogValueSanitizer.normalizeForLog(httpRequest.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(httpRequest.getRemoteAddr()),
+                    authenticationFailureReason(e));
+            // Return the same response for all authentication failures to avoid
+            // leaking account-state or username validity details.
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorBody("Invalid credentials"));
         }
@@ -95,6 +120,25 @@ public class AuthController {
             return customerScopedPrincipal.customerId();
         }
         return null;
+    }
+
+    private String authenticationFailureReason(AuthenticationException exception) {
+        if (exception instanceof BadCredentialsException) {
+            return "bad_credentials";
+        }
+        if (exception instanceof DisabledException) {
+            return "account_disabled";
+        }
+        if (exception instanceof LockedException) {
+            return "account_locked";
+        }
+        if (exception instanceof AccountExpiredException) {
+            return "account_expired";
+        }
+        if (exception instanceof CredentialsExpiredException) {
+            return "credentials_expired";
+        }
+        return "authentication_failed";
     }
 
     // Simple inline record — only used for the error case in this controller

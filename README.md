@@ -547,4 +547,22 @@ Each rule produces a severity score; the alert carries the highest severity acro
 
 ---
 
-*Built by Kim for Capitec Back-End Engineer Assessment*
+## Security Practices
+
+This project follows secure development practices aligned with OWASP recommendations:
+
+* **Static Application Security Testing (SAST):**
+  Integrated GitHub CodeQL and SpotBugs (with FindSecBugs) to detect vulnerabilities such as injection flaws and
+  insecure coding patterns.
+
+* **Dependency Security (SCA):**
+  OWASP Dependency-Check is used during the build process to identify known vulnerabilities in third-party libraries.
+
+* **Secrets Detection:**
+  Gitleaks is used to prevent accidental exposure of sensitive information such as API keys or credentials.
+
+* **Automated Security in CI/CD:**
+  GitHub Actions run security scans on every push and pull request to ensure continuous security validation.
+
+These practices help ensure the fraud detection engine is resilient against common security risks and aligns with
+industry standards.

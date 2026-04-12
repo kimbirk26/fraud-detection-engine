@@ -1,6 +1,10 @@
 package com.kim.fraudengine.infrastructure.config;
 
 import com.kim.fraudengine.infrastructure.logging.RequestCorrelationFilter;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import com.kim.fraudengine.infrastructure.security.AuthRateLimitFilter;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.kim.fraudengine.infrastructure.security.AuthRateLimitProperties;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +38,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+@SuppressFBWarnings(
+        value = {"SPRING_CSRF_PROTECTION_DISABLED", "CRLF_INJECTION_LOGS"},
+        justification = "SPRING_CSRF_PROTECTION_DISABLED: stateless JWT API — no sessions, cookies, or form login; " +
+                        "CSRF not applicable. Annotation must be at class level because csrf.disable() is called " +
+                        "inside a lambda (synthetic class) not covered by method-level suppression. " +
+                        "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer; " +
+                        "log callbacks are lambdas whose synthetic classes are not covered by method-level suppression")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -46,9 +57,9 @@ public class SecurityConfig {
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             securityLog.warn("event=authentication_required path={} remote={} reason={}",
-                    request.getRequestURI(),
-                    request.getRemoteAddr(),
-                    authException.getMessage());
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
+                    SensitiveLogValueSanitizer.normalizeForLog(authException.getMessage()));
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Unauthorized\"}");
@@ -59,10 +70,10 @@ public class SecurityConfig {
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
             securityLog.warn("event=access_denied principal={} path={} remote={} reason={}",
-                    currentPrincipalName(),
-                    request.getRequestURI(),
-                    request.getRemoteAddr(),
-                    accessDeniedException.getMessage());
+                    SensitiveLogValueSanitizer.maskPrincipal(currentPrincipalName()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
+                    SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
+                    SensitiveLogValueSanitizer.normalizeForLog(accessDeniedException.getMessage()));
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Forbidden\"}");
@@ -70,20 +81,54 @@ public class SecurityConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilter() {
+    public RequestCorrelationFilter requestCorrelationFilterBean() {
+        return new RequestCorrelationFilter();
+    }
+
+    @Bean
+    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilterRegistration(
+            RequestCorrelationFilter requestCorrelationFilter) {
         FilterRegistrationBean<RequestCorrelationFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new RequestCorrelationFilter());
+        registration.setFilter(requestCorrelationFilter);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         registration.addUrlPatterns("/*");
         return registration;
     }
 
     @Bean
+    public AuthRateLimitFilter authRateLimitFilterBean(AuthRateLimitProperties properties) {
+        return new AuthRateLimitFilter(properties);
+    }
+
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(
+            AuthRateLimitFilter authRateLimitFilter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(authRateLimitFilter);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        registration.addUrlPatterns("/api/v1/auth/token");
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    @SuppressWarnings("java:S4502")
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtAuthenticationFilter jwtAuthenticationFilter,
                                     AuthenticationEntryPoint authenticationEntryPoint,
                                     AccessDeniedHandler accessDeniedHandler) throws Exception {
         http
+                // Safe here because this API is stateless and uses Bearer JWTs in the
+                // Authorization header only. We do not use sessions, form login,
+                // HTTP Basic, remember-me, or cookie-based authentication.
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
@@ -94,7 +139,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/token").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())
@@ -125,8 +171,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
-        var provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        var provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         if (userDetailsService instanceof UserDetailsPasswordService passwordService) {
             provider.setUserDetailsPasswordService(passwordService);
@@ -144,17 +189,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
-                HttpMethod.PUT.name(),
-                HttpMethod.PATCH.name(),
-                HttpMethod.DELETE.name(),
                 HttpMethod.OPTIONS.name()));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                RequestCorrelationFilter.CORRELATION_HEADER));
+        configuration.setExposedHeaders(List.of(RequestCorrelationFilter.CORRELATION_HEADER));
         configuration.setAllowCredentials(false);
 
         var source = new UrlBasedCorsConfigurationSource();

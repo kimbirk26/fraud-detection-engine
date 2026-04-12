@@ -9,6 +9,13 @@ import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.port.inbound.GetAlertsUseCase;
 import com.kim.fraudengine.infrastructure.logging.AuditLog;
 import com.kim.fraudengine.infrastructure.security.CustomerAccessEvaluator;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 
+@Tag(name = "Alerts", description = "Query fraud alerts. Requires authority: alerts:read (own) or alerts:read:all (global)")
 @RestController
 @RequestMapping("/api/v1/alerts")
 public class AlertController {
@@ -36,6 +44,12 @@ public class AlertController {
         this.customerAccessEvaluator = customerAccessEvaluator;
     }
 
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
+    @Operation(summary = "Get alert by ID",
+               description = "Returns the alert if it belongs to the authenticated customer, or 404 if not found or not accessible.")
+    @ApiResponse(responseCode = "200", description = "Alert found",
+                 content = @Content(schema = @Schema(implementation = AlertResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Alert not found")
     @PreAuthorize("hasAuthority('alerts:read')")
     @GetMapping("/{id}")
     public AlertResponse getById(@PathVariable UUID id,
@@ -54,6 +68,10 @@ public class AlertController {
         return response;
     }
 
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
+    @Operation(summary = "Get alerts by customer ID",
+               description = "Returns all alerts for the given customer. Access restricted to the customer's own account, or users with alerts:read:all.")
+    @ApiResponse(responseCode = "200", description = "Alerts returned (may be empty)")
     @PreAuthorize("hasAuthority('alerts:read') and @customerAccess.canRead(#customerId, authentication)")
     @GetMapping("/customer/{customerId}")
     public List<AlertResponse> getByCustomer(@PathVariable String customerId,
@@ -69,11 +87,16 @@ public class AlertController {
         return alerts;
     }
 
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
+    @Operation(summary = "Filter alerts globally",
+               description = "Returns all alerts matching the given filter. Exactly one of `status` or `severity` is required. Requires alerts:read:all authority.")
+    @ApiResponse(responseCode = "200", description = "Alerts returned")
+    @ApiResponse(responseCode = "400", description = "No filter parameter provided")
     @PreAuthorize("hasAuthority('alerts:read:all')")
     @GetMapping
     public List<AlertResponse> getByFilter(
-            @RequestParam(required = false) AlertStatus status,
-            @RequestParam(required = false) Severity severity,
+            @Parameter(description = "Filter by alert status") @RequestParam(required = false) AlertStatus status,
+            @Parameter(description = "Filter by severity") @RequestParam(required = false) Severity severity,
             Authentication authentication) {
 
         if (status != null) {

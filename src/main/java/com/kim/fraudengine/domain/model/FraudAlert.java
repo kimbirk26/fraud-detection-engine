@@ -1,7 +1,9 @@
 package com.kim.fraudengine.domain.model;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public record FraudAlert(
@@ -12,6 +14,15 @@ public record FraudAlert(
         Severity highestSeverity,
         AlertStatus status,
         Instant createdAt) {
+    public FraudAlert {
+        triggeredRules = List.copyOf(Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
+    }
+
+    @Override
+    public List<RuleResult> triggeredRules() {
+        return List.copyOf(triggeredRules);
+    }
+
     public static FraudAlert from(TransactionEvent transactionEvent, List<RuleResult> triggered) {
         Severity highest =
                 triggered.stream().map(RuleResult::severity).max(Enum::compareTo).orElse(Severity.NONE);
@@ -22,6 +33,6 @@ public record FraudAlert(
                 triggered,
                 highest,
                 AlertStatus.OPEN,
-                Instant.now());
+                Instant.now().truncatedTo(ChronoUnit.MICROS));
     }
 }

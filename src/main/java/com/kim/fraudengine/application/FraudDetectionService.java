@@ -11,6 +11,8 @@ import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
 import com.kim.fraudengine.domain.rule.RuleEngine;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,7 +31,7 @@ import java.util.UUID;
  * that touches both ports and domain objects.
  */
 @Service
-public class FraudDetectionService implements ProcessTransactionUseCase, GetAlertsUseCase {
+public final class FraudDetectionService implements ProcessTransactionUseCase, GetAlertsUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(FraudDetectionService.class);
 
@@ -55,20 +58,26 @@ public class FraudDetectionService implements ProcessTransactionUseCase, GetAler
     }
 
     @Override
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "UUIDs, enums, and internal rule name constants cannot contain CRLF characters")
     public Optional<FraudAlert> process(TransactionEvent transactionEvent) {
         log.info(
                 "Evaluating transaction {} for customer {}",
                 transactionEvent.id(),
-                transactionEvent.customerId());
+                SensitiveLogValueSanitizer.normalizeForLog(transactionEvent.customerId()));
         try {
             Optional<FraudAlert> result =
                     transactionOperations.execute(status -> processInTransaction(transactionEvent));
-            return result == null ? Optional.empty() : result;
+            return Objects.requireNonNull(
+                    result,
+                    "Transaction callback returned null Optional");
         } catch (DataIntegrityViolationException ex) {
             return resolveConcurrentDuplicate(transactionEvent, ex);
         }
     }
 
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "UUIDs, enums, and internal rule name constants cannot contain CRLF characters")
     private Optional<FraudAlert> processInTransaction(TransactionEvent transactionEvent) {
         transactionHistoryRepository.lockCustomer(transactionEvent.customerId());
 
@@ -118,6 +127,8 @@ public class FraudDetectionService implements ProcessTransactionUseCase, GetAler
         return Optional.of(saved);
     }
 
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "UUIDs cannot contain CRLF characters")
     private Optional<FraudAlert> resolveConcurrentDuplicate(
             TransactionEvent transactionEvent, DataIntegrityViolationException ex) {
         if (!transactionHistoryRepository.existsByTransactionId(transactionEvent.id())) {

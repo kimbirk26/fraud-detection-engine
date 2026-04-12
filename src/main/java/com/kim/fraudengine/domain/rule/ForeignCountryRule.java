@@ -5,9 +5,12 @@ import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 
-import java.math.BigDecimal;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-public class ForeignCountryRule implements FraudRule {
+import java.math.BigDecimal;
+import java.util.Locale;
+
+public final class ForeignCountryRule implements FraudRule {
 
     private static final String RULE_NAME = "FOREIGN_COUNTRY";
 
@@ -22,11 +25,13 @@ public class ForeignCountryRule implements FraudRule {
             throw new IllegalArgumentException("minimumAmount must be non-null and non-negative");
         }
 
-        this.homeCountryCode = homeCountryCode.trim().toUpperCase();
+        this.homeCountryCode = homeCountryCode.trim().toUpperCase(Locale.ROOT);
         this.minimumAmount = minimumAmount;
     }
 
     @Override
+    @SuppressFBWarnings(value = "IMPROPER_UNICODE",
+            justification = "Country codes are ASCII-only ISO 3166-1 alpha-2; Locale.ROOT is correct here")
     public RuleResult evaluate(TransactionContext transactionContext) {
         TransactionEvent transaction = transactionContext.transaction();
 
@@ -39,7 +44,7 @@ public class ForeignCountryRule implements FraudRule {
             return RuleResult.pass(ruleName());
         }
 
-        String normalizedCountry = transactionCountry.trim().toUpperCase();
+        String normalizedCountry = transactionCountry.trim().toUpperCase(Locale.ROOT);
 
         if (transaction.amount().compareTo(minimumAmount) < 0
             || normalizedCountry.equals(homeCountryCode)) {

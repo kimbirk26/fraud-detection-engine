@@ -11,7 +11,10 @@ import com.kim.fraudengine.domain.model.Severity;
 
 import java.util.List;
 
-public class AlertMapper {
+public final class AlertMapper {
+
+    private AlertMapper() {
+    }
 
     public static AlertResponse toResponse(FraudAlert alert) {
         List<RuleResultResponse> rules = alert.triggeredRules().stream().map(AlertMapper::toRuleResponse).toList();

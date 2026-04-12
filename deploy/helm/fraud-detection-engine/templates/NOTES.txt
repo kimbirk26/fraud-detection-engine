@@ -1,0 +1,9 @@
+1. Ensure the backing secret exists before rollout:
+   kubectl get secret {{ include "fraud-detection-engine.secretName" . }} -n {{ .Release.Namespace }}
+
+2. Check deployment rollout:
+   kubectl rollout status deployment/{{ include "fraud-detection-engine.fullname" . }} -n {{ .Release.Namespace }}
+
+3. Inspect health:
+   kubectl port-forward svc/{{ include "fraud-detection-engine.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   curl http://127.0.0.1:8080/actuator/health

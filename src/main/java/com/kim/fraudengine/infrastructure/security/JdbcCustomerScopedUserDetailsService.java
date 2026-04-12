@@ -1,5 +1,6 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,6 +36,8 @@ public class JdbcCustomerScopedUserDetailsService
 
     private final JdbcTemplate jdbcTemplate;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singleton - effectively immutable after context initialization")
     public JdbcCustomerScopedUserDetailsService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }

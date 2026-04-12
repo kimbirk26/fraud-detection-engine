@@ -6,7 +6,7 @@ import com.kim.fraudengine.domain.model.TransactionContext;
 
 import java.math.BigDecimal;
 
-public class AmountThresholdRule implements FraudRule {
+public final class AmountThresholdRule implements FraudRule {
 
     private static final String RULE_NAME = "AMOUNT_THRESHOLD";
 

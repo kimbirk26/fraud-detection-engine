@@ -16,9 +16,16 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
+@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+        justification = "All exception messages pass through SensitiveLogValueSanitizer.normalizeForLog() " +
+                        "which strips control characters; SpotBugs does not recognise custom sanitizers as taint-cleaners")
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -27,7 +34,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlertNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleAlertNotFound(AlertNotFoundException ex) {
         String traceId = newTraceId();
-        log.info("Alert not found [traceId={}]: {}", traceId, ex.getMessage());
+        log.info("Alert not found [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ErrorResponse.of(404, "Not Found", ex.getMessage(), traceId));
@@ -36,7 +43,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidFilterException.class)
     public ResponseEntity<ErrorResponse> handleInvalidFilter(InvalidFilterException ex) {
         String traceId = newTraceId();
-        log.info("Invalid filter [traceId={}]: {}", traceId, ex.getMessage());
+        log.info("Invalid filter [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(400, "Bad Request", ex.getMessage(), traceId));
@@ -52,7 +59,7 @@ public class GlobalExceptionHandler {
                 .map(fe -> new ErrorResponse.FieldError(fe.getField(), fieldMessage(fe)))
                 .toList();
 
-        log.info("Validation failed [traceId={}]: {} field errors", traceId, fieldErrors.size());
+        log.info("Validation failed [traceId={}]: {} field errors", traceId, fieldErrors.size()); // fieldErrors.size() is an int - safe
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.validation(traceId, fieldErrors));
@@ -73,7 +80,7 @@ public class GlobalExceptionHandler {
                 })
                 .toList();
 
-        log.info("Constraint violation [traceId={}]: {}", traceId, ex.getMessage());
+        log.info("Constraint violation [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.validation(traceId, fieldErrors));
@@ -85,7 +92,7 @@ public class GlobalExceptionHandler {
 
         String safeMessage = extractSafeMessage(ex);
 
-        log.info("Unreadable request body [traceId={}]: {}", traceId, ex.getMessage());
+        log.info("Unreadable request body [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(400, "Bad Request", safeMessage, traceId));
@@ -94,17 +101,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String traceId = newTraceId();
+        Class<?> requiredType = ex.getRequiredType();
 
         String message = String.format(
                 "Invalid value '%s' for parameter '%s'%s.",
                 ex.getValue(),
                 ex.getName(),
-                ex.getRequiredType() != null
-                        ? " — expected " + ex.getRequiredType().getSimpleName()
+                requiredType != null
+                        ? " — expected " + requiredType.getSimpleName()
                         : ""
         );
 
-        log.info("Type mismatch [traceId={}]: {}", traceId, message);
+        log.info("Type mismatch [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(message));
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(400, "Bad Request", message, traceId));
@@ -114,7 +122,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex) {
         String traceId = newTraceId();
 
-        log.warn("Access denied [traceId={}]: {}", traceId, ex.getMessage());
+        log.warn("Access denied [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of(403, "Forbidden", "Access is denied.", traceId));
@@ -140,7 +148,7 @@ public class GlobalExceptionHandler {
         if (correlationId != null && !correlationId.isBlank()) {
             return correlationId;
         }
-        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
     }
 
     private String fieldMessage(FieldError fe) {

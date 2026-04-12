@@ -1,5 +1,7 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -56,6 +58,8 @@ public class AuthBootstrapRunner implements ApplicationRunner {
     private final JdbcCustomerScopedUserDetailsService userDetailsService;
     private final TransactionOperations transactionOperations;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singletons - effectively immutable after context initialization")
     public AuthBootstrapRunner(
             AuthBootstrapProperties properties,
             JdbcTemplate jdbcTemplate,
@@ -117,7 +121,7 @@ public class AuthBootstrapRunner implements ApplicationRunner {
         log.info(
                 "Auth bootstrap {} user {}",
                 existingUser == null ? "created" : (userChanged || authoritiesChanged ? "updated" : "verified"),
-                configuredUser.username());
+                SensitiveLogValueSanitizer.normalizeForLog(configuredUser.username()));
     }
 
     private CustomerScopedUserDetails findExistingUser(String username) {

@@ -1,0 +1,72 @@
+image:
+  repository: "<account-id>.dkr.ecr.<region>.amazonaws.com/fraud-detection-engine"
+  tag: "latest"
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/fraud-detection-engine-irsa"
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+  hosts:
+    - host: fraud-api.internal.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 2000m
+    memory: 2048Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+database:
+  host: "fraud-engine.cluster-xxxxxxxxxxxx.af-south-1.rds.amazonaws.com"
+  port: 5432
+  name: frauddb
+
+kafka:
+  bootstrapServers: "b-1.fraud-msk.xxxxxx.c2.kafka.af-south-1.amazonaws.com:9098,b-2.fraud-msk.xxxxxx.c2.kafka.af-south-1.amazonaws.com:9098"
+
+cors:
+  allowedOrigins:
+    - "https://wallets.example.com"
+
+externalSecret:
+  enabled: true
+  targetSecretName: fraud-detection-engine-secrets
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  data:
+    dbUser:
+      key: fraud-detection-engine/application
+      property: dbUser
+    dbPassword:
+      key: fraud-detection-engine/application
+      property: dbPassword
+    jwtSecret:
+      key: fraud-detection-engine/application
+      property: jwtSecret
+    jwtIssuer:
+      key: fraud-detection-engine/application
+      property: jwtIssuer
+    jwtAudience:
+      key: fraud-detection-engine/application
+      property: jwtAudience
+
+secrets:
+  create: false

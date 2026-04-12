@@ -18,8 +18,22 @@ public final class AuditLog {
     }
 
     public static void record(String event, Map<String, Object> details) {
-        StringBuilder sb = new StringBuilder("event=").append(event);
-        details.forEach((k, v) -> sb.append(' ').append(k).append('=').append(v));
-        log.info(sb.toString());
+        if (log.isInfoEnabled()) {
+            log.info(formatAuditLine(event, details));
+        }
+    }
+
+    static String formatAuditLine(String event, Map<String, Object> details) {
+        StringBuilder sb = new StringBuilder("event=")
+                .append(SensitiveLogValueSanitizer.normalizeForLog(event));
+        if (details != null) {
+            details.forEach((k, v) -> {
+                String sanitized = SensitiveLogValueSanitizer.sanitizeDetail(k, v);
+                if (sanitized != null) {
+                    sb.append(' ').append(k).append('=').append(sanitized);
+                }
+            });
+        }
+        return sb.toString();
     }
 }

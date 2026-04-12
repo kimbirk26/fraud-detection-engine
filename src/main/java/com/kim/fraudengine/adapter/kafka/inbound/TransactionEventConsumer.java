@@ -3,7 +3,9 @@ package com.kim.fraudengine.adapter.kafka.inbound;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import com.kim.fraudengine.infrastructure.security.InternalAuthenticationRunner;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -12,11 +14,15 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
  * Inbound adapter: consumes transaction events from Kafka and delegates to the use case.
  */
+@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+        justification = "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF; " +
+                        "SpotBugs cannot see through the ifPresent lambda to the method-level suppression")
 @Component
 public class TransactionEventConsumer {
 
@@ -27,6 +33,8 @@ public class TransactionEventConsumer {
     private final ObjectMapper objectMapper;
     private final InternalAuthenticationRunner internalAuthenticationRunner;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singleton - effectively immutable after context initialization")
     public TransactionEventConsumer(ProcessTransactionUseCase processTransactionUseCase,
                                     ObjectMapper objectMapper,
                                     InternalAuthenticationRunner internalAuthenticationRunner) {
@@ -42,8 +50,9 @@ public class TransactionEventConsumer {
     )
     public void consume(@Payload String payload,
                         @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-                        @Header(KafkaHeaders.OFFSET) long offset) throws Exception {
-        log.debug("Received message from topic={} offset={}", topic, offset);
+                        @Header(KafkaHeaders.OFFSET) long offset) throws IOException {
+        log.debug("Received message from topic={} offset={}",
+                SensitiveLogValueSanitizer.normalizeForLog(topic), offset);
         TransactionEvent transactionEvent = objectMapper.readValue(payload, TransactionEvent.class);
         internalAuthenticationRunner.runAs(
                         INTERNAL_PRINCIPAL_NAME,

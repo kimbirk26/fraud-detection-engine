@@ -1,0 +1,42 @@
+title = "Fraud Detection Engine Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|secret|token)[\s:=]+["']?[a-z0-9_-]{16,}["']?'''
+tags = ["key", "API"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY-----'''
+tags = ["key", "private"]
+
+[[rules]]
+id = "jwt"
+description = "JWT Token"
+regex = '''eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+'''
+tags = ["token", "jwt"]
+
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9a-zA-Z]{10,48}'''
+tags = ["token", "slack"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "key"]
+
+[allowlist]
+description = "Ignore lock files"
+paths = [
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)yarn\.lock$''',
+  '''(^|/)pnpm-lock\.yaml$'''
+]

@@ -15,18 +15,32 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class JwtService {
+public final class JwtService {
 
     private final SecretKey signingKey;
     private final long expiryMinutes;
+    private final String issuer;
+    private final String audience;
 
-    public JwtService(@Value("${app.jwt.secret}") String secret, @Value("${app.jwt.expiry-minutes:60}") long expiryMinutes) {
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiry-minutes:60}") long expiryMinutes,
+            @Value("${app.jwt.issuer}") String issuer,
+            @Value("${app.jwt.audience}") String audience) {
 
         if (secret == null || secret.isBlank() || secret.length() < 32) {
             throw new IllegalArgumentException("app.jwt.secret must be at least 32 characters for HS256");
         }
+        if (issuer == null || issuer.isBlank()) {
+            throw new IllegalArgumentException("app.jwt.issuer must not be blank");
+        }
+        if (audience == null || audience.isBlank()) {
+            throw new IllegalArgumentException("app.jwt.audience must not be blank");
+        }
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiryMinutes = expiryMinutes;
+        this.issuer = issuer;
+        this.audience = audience;
     }
 
     public String generateToken(String username, List<String> roles) {
@@ -37,7 +51,15 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(expiryMinutes * 60);
 
-        var builder = Jwts.builder().subject(username).issuedAt(Date.from(now)).expiration(Date.from(expiry)).id(UUID.randomUUID().toString()).claim("roles", roles).signWith(signingKey);
+        var builder = Jwts.builder()
+                .subject(username)
+                .issuer(issuer)
+                .audience().add(audience).and()
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .id(UUID.randomUUID().toString())
+                .claim("roles", roles)
+                .signWith(signingKey);
 
         if (customerId != null && !customerId.isBlank()) {
             builder.claim("customerId", customerId);
@@ -77,7 +99,13 @@ public class JwtService {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .requireIssuer(issuer)
+                .requireAudience(audience)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private boolean isExpired(String token) {

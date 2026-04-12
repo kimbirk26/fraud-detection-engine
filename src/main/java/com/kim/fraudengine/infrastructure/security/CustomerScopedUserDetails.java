@@ -3,9 +3,14 @@ package com.kim.fraudengine.infrastructure.security;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
+import java.io.Serial;
 import java.util.Collection;
+import java.util.Objects;
 
 public class CustomerScopedUserDetails extends User implements CustomerScopedPrincipal {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final String customerId;
 
@@ -38,6 +43,19 @@ public class CustomerScopedUserDetails extends User implements CustomerScopedPri
     @Override
     public String customerId() {
         return customerId;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof CustomerScopedUserDetails other)) return false;
+        if (!super.equals(other)) return false;
+        return Objects.equals(customerId, other.customerId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), customerId);
     }
 
     private static String normalize(String customerId) {
