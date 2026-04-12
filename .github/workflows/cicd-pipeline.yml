@@ -67,10 +67,9 @@ jobs:
           cache-default-branch-only: false
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
-        continue-on-error: false
 
       - name: Upload Qodana Results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
