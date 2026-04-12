@@ -108,7 +108,7 @@ jobs:
 
       - name: Build Project for CodeQL
         run: ./mvnw clean install -DskipTests=true -Ddependency-check.skip=true -q
-        
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
@@ -177,7 +177,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=fraud-detection-engine
-            -Dsonar.projectName=Fraud Detection Engine
+            -Dsonar.projectName='Fraud-Detection-Engine'
             -Dsonar.sources=src/main
             -Dsonar.tests=src/test
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
