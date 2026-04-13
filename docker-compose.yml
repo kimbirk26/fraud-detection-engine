@@ -16,6 +16,22 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  ui:
+    build: ../fraud-detection-engine-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    profiles:
+      - ui
 
   postgres:
     image: postgres:16-alpine

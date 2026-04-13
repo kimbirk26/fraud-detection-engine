@@ -110,18 +110,22 @@ cd fraud-detection-engine
 
 # Build and start all services (app + Postgres + Kafka)
 docker compose up --build
+
+# To also start the UI (requires the fraud-detection-engine-ui repo as a sibling directory)
+docker compose --profile ui up --build
 ```
 
 The service will start on `http://localhost:8080`.
 
 Docker Compose starts the following services:
 
-| Service     | Port   | Notes                                     |
-|-------------|--------|-------------------------------------------|
-| `app`       | `8080` | Spring Boot application                   |
-| `postgres`  | `5432` | Waits for healthy DB before app starts    |
-| `kafka`     | `9092` | Accessible from host; internal on `29092` |
-| `zookeeper` | —      | Internal only                             |
+| Service     | Port   | Notes                                          |
+|-------------|--------|------------------------------------------------|
+| `app`       | `8080` | Spring Boot application                        |
+| `postgres`  | `5432` | Waits for healthy DB before app starts         |
+| `kafka`     | `9092` | Accessible from host; internal on `29092`      |
+| `zookeeper` | —      | Internal only                                  |
+| `ui`        | `3000` | Optional — only started with `--profile ui`    |
 
 The app service depends on both `postgres` and `kafka` health checks passing before it starts.
 
