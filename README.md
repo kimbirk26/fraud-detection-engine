@@ -125,10 +125,13 @@ Docker Compose starts the following services:
 
 The app service depends on both `postgres` and `kafka` health checks passing before it starts.
 
-> **Note:** Ensure your `.env` file is populated before running. See the Configuration section above.
+> **Note:** Copy `.env.example` to `.env` before running (`cp .env.example .env`). The defaults work out of the box for local development.
 
-> **Running without Kafka:** Skip `docker compose up` and run the app directly with `./mvnw spring-boot:run`. Use
-`POST /api/v1/transactions/sync` to submit transactions — all fraud evaluation runs in-process with no Kafka required.
+> **Running without Kafka:** Start only Postgres (`docker compose up postgres -d`), then run the app with the local profile:
+> ```bash
+> SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+> ```
+> Use `POST /api/v1/transactions/sync` to submit transactions — all fraud evaluation runs in-process with no Kafka required.
 
 ### Building the Docker Image Manually
 
@@ -142,22 +145,24 @@ runs as a non-root user (`fraud`) in the final image.
 
 ### Configuration
 
-Copy `.env.example` to `.env` and fill in your values before running:
+Copy `.env.example` to `.env` before running. The file ships with working defaults for local development — no edits required to get started:
 
 ```bash
 cp .env.example .env
 ```
 
 ```env
-# .env.example — copy to .env and fill in values (never commit .env)
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
-JWT_SECRET=
-KAFKA_BOOTSTRAP_SERVERS=
+# Copy this file to .env
+# These values are for local development only
+
+DB_USER=fraud_user
+DB_PASSWORD=fraud_pass
+DB_NAME=frauddb
+JWT_SECRET=local-dev-secret-change-in-production
+KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 ```
 
-Docker Compose picks up `.env` automatically. The `docker-compose.yml` references these variables:
+Docker Compose picks up `.env` automatically. The `docker-compose.yml` passes the database variables to both the `postgres` service and the `app` service:
 
 ```yaml
 environment:
@@ -166,7 +171,9 @@ environment:
   POSTGRES_DB: ${DB_NAME}
 ```
 
-And in `application.yml`:
+Docker Compose also activates the `local` Spring profile (`SPRING_PROFILES_ACTIVE: local`), which bootstraps the test users and provides JWT defaults — no additional JWT environment variables are required for local runs.
+
+In `application.yml`:
 
 ```yaml
 app:
@@ -175,8 +182,8 @@ app:
     expiry-minutes: 60
   kafka:
     topics:
-      transactions: transactions.inbound
-    consumer-group: fraud-engine-group
+      transactions: transactions.raw
+    consumer-group: fraud-rule-engine-group
 ```
 
 > **Production:** In a production environment, secrets should never be stored in `.env` files. Use a secrets manager
