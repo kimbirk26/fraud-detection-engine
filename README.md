@@ -103,19 +103,28 @@ Key design decisions:
 
 ### Running Locally
 
+**1. Clone the repository**
+
 ```bash
-# Clone the repository
 git clone https://github.com/your-username/fraud-detection-engine.git
 cd fraud-detection-engine
-
-# Build and start all services (app + Postgres + Kafka)
-docker compose up --build
-
-# To also start the UI (requires the fraud-detection-engine-ui repo as a sibling directory)
-docker compose --profile ui up --build
 ```
 
-The service will start on `http://localhost:8080`.
+**2. Copy the environment file**
+
+```bash
+cp .env.example .env
+```
+
+The defaults are already filled in — no edits needed for local development.
+
+**3. Start all services**
+
+```bash
+docker compose up --build
+```
+
+The app will be ready at `http://localhost:8080` once you see Spring Boot's banner in the logs. Postgres and Kafka health checks must pass before the app starts, so the first run takes a minute or two.
 
 Docker Compose starts the following services:
 
@@ -127,9 +136,10 @@ Docker Compose starts the following services:
 | `zookeeper` | —      | Internal only                                  |
 | `ui`        | `3000` | Optional — only started with `--profile ui`    |
 
-The app service depends on both `postgres` and `kafka` health checks passing before it starts.
-
-> **Note:** Copy `.env.example` to `.env` before running (`cp .env.example .env`). The defaults work out of the box for local development.
+> **With the UI:** If you have the `fraud-detection-engine-ui` repo checked out as a sibling directory, run:
+> ```bash
+> docker compose --profile ui up --build
+> ```
 
 > **Running without Kafka:** Start only Postgres (`docker compose up postgres -d`), then run the app with the local profile:
 > ```bash
