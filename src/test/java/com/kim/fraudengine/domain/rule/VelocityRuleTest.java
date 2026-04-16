@@ -10,41 +10,41 @@ import org.junit.jupiter.api.Test;
 
 class VelocityRuleTest {
 
-  @Test
-  void shouldPassWhenTransactionCountStaysWithinLimit() {
-    VelocityRule rule = new VelocityRule(5, 10);
+    @Test
+    void shouldPassWhenTransactionCountStaysWithinLimit() {
+        VelocityRule rule = new VelocityRule(5, 10);
 
-    RuleResult result = rule.evaluate(context(4));
+        RuleResult result = rule.evaluate(context(4));
 
-    assertThat(result.triggered()).isFalse();
-  }
+        assertThat(result.triggered()).isFalse();
+    }
 
-  @Test
-  void shouldFlagWhenCurrentTransactionPushesCountOverLimit() {
-    VelocityRule rule = new VelocityRule(5, 10);
+    @Test
+    void shouldFlagWhenCurrentTransactionPushesCountOverLimit() {
+        VelocityRule rule = new VelocityRule(5, 10);
 
-    RuleResult result = rule.evaluate(context(5));
+        RuleResult result = rule.evaluate(context(5));
 
-    assertThat(result.triggered()).isTrue();
-    assertThat(result.severity()).isEqualTo(Severity.HIGH);
-    assertThat(result.ruleName()).isEqualTo("VELOCITY_CHECK");
-    assertThat(result.reason()).contains("6 transactions");
-    assertThat(result.reason()).contains("limit: 5");
-  }
+        assertThat(result.triggered()).isTrue();
+        assertThat(result.severity()).isEqualTo(Severity.HIGH);
+        assertThat(result.ruleName()).isEqualTo("VELOCITY_CHECK");
+        assertThat(result.reason()).contains("6 transactions");
+        assertThat(result.reason()).contains("limit: 5");
+    }
 
-  private TransactionContext context(long recentTransactionCount) {
-    TransactionEvent tx =
-        new TransactionEvent(
-            UUID.randomUUID(),
-            "CUST001",
-            BigDecimal.TEN,
-            "MERCH001",
-            "Test Merchant",
-            TransactionCategory.GROCERIES,
-            "ZAR",
-            "ZA",
-            Instant.parse("2024-01-01T10:00:00Z"));
+    private TransactionContext context(long recentTransactionCount) {
+        TransactionEvent tx =
+                new TransactionEvent(
+                        UUID.randomUUID(),
+                        "CUST001",
+                        BigDecimal.TEN,
+                        "MERCH001",
+                        "Test Merchant",
+                        TransactionCategory.GROCERIES,
+                        "ZAR",
+                        "ZA",
+                        Instant.parse("2024-01-01T10:00:00Z"));
 
-    return new TransactionContext(tx, recentTransactionCount);
-  }
+        return new TransactionContext(tx, recentTransactionCount);
+    }
 }

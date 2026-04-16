@@ -1,22 +1,21 @@
 package com.kim.fraudengine.infrastructure.security;
 
-import jakarta.servlet.FilterChain;
-import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import jakarta.servlet.FilterChain;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 class AuthRateLimitFilterTest {
 
@@ -73,8 +72,10 @@ class AuthRateLimitFilterTest {
 
     @Test
     void ignores_spoofed_x_forwarded_for_when_request_is_not_from_trusted_proxy() throws Exception {
-        var filter = new AuthRateLimitFilter(
-                new AuthRateLimitProperties(1, 1, true, List.of("10.0.0.0/8"), 60, 10_000, 100));
+        var filter =
+                new AuthRateLimitFilter(
+                        new AuthRateLimitProperties(
+                                1, 1, true, List.of("10.0.0.0/8"), 60, 10_000, 100));
         var chain = mock(FilterChain.class);
 
         var firstRequest = request("203.0.113.10", "POST");
@@ -91,9 +92,12 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
-    void uses_rightmost_untrusted_forwarded_ip_when_request_is_from_trusted_proxy() throws Exception {
-        var filter = new AuthRateLimitFilter(
-                new AuthRateLimitProperties(1, 1, true, List.of("10.0.0.0/8"), 60, 10_000, 100));
+    void uses_rightmost_untrusted_forwarded_ip_when_request_is_from_trusted_proxy()
+            throws Exception {
+        var filter =
+                new AuthRateLimitFilter(
+                        new AuthRateLimitProperties(
+                                1, 1, true, List.of("10.0.0.0/8"), 60, 10_000, 100));
         var chain = mock(FilterChain.class);
 
         var firstRequest = request("10.0.0.1", "POST");
@@ -111,7 +115,9 @@ class AuthRateLimitFilterTest {
 
     @Test
     void non_post_requests_do_not_consume_login_budget() throws Exception {
-        var filter = new AuthRateLimitFilter(new AuthRateLimitProperties(1, 1, false, List.of(), 60, 10_000, 100));
+        var filter =
+                new AuthRateLimitFilter(
+                        new AuthRateLimitProperties(1, 1, false, List.of(), 60, 10_000, 100));
         var chain = mock(FilterChain.class);
 
         filter.doFilter(request("10.0.0.3", "OPTIONS"), new MockHttpServletResponse(), chain);
@@ -126,9 +132,9 @@ class AuthRateLimitFilterTest {
     @Test
     void expires_idle_buckets_and_admits_new_clients_after_cleanup() throws Exception {
         var clock = new MutableClock(Instant.parse("2026-04-11T00:00:00Z"));
-        var filter = new AuthRateLimitFilter(
-                new AuthRateLimitProperties(3, 3, false, List.of(), 1, 1, 1),
-                clock);
+        var filter =
+                new AuthRateLimitFilter(
+                        new AuthRateLimitProperties(3, 3, false, List.of(), 1, 1, 1), clock);
         var chain = mock(FilterChain.class);
 
         filter.doFilter(request("192.0.2.10", "POST"), new MockHttpServletResponse(), chain);

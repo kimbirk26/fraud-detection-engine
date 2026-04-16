@@ -25,7 +25,8 @@ public class KafkaConfig {
     }
 
     @Bean
-    public NewTopic transactionsDltTopic(@Value("${app.kafka.topics.transactions-dlt}") String name) {
+    public NewTopic transactionsDltTopic(
+            @Value("${app.kafka.topics.transactions-dlt}") String name) {
         return TopicBuilder.name(name).partitions(3).replicas(1).build();
     }
 
@@ -38,12 +39,14 @@ public class KafkaConfig {
     public CommonErrorHandler kafkaErrorHandler(
             KafkaTemplate<String, String> kafkaTemplate,
             @Value("${app.kafka.topics.transactions-dlt}") String dltTopic) {
-        var recoverer = new DeadLetterPublishingRecoverer(
-                kafkaTemplate,
-                (record, ex) -> new TopicPartition(dltTopic, record.partition()));
+        var recoverer =
+                new DeadLetterPublishingRecoverer(
+                        kafkaTemplate,
+                        (record, ex) -> new TopicPartition(dltTopic, record.partition()));
 
         var errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2L));
-        errorHandler.addNotRetryableExceptions(JsonProcessingException.class, IllegalArgumentException.class);
+        errorHandler.addNotRetryableExceptions(
+                JsonProcessingException.class, IllegalArgumentException.class);
         errorHandler.setCommitRecovered(true);
         return errorHandler;
     }

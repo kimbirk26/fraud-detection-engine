@@ -3,7 +3,6 @@ package com.kim.fraudengine.domain.rule;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
-
 import java.math.BigDecimal;
 
 public final class AmountThresholdRule implements FraudRule {
@@ -15,7 +14,8 @@ public final class AmountThresholdRule implements FraudRule {
 
     public AmountThresholdRule(BigDecimal highThreshold, BigDecimal mediumThreshold) {
         if (highThreshold.compareTo(mediumThreshold) <= 0) {
-            throw new IllegalArgumentException("High threshold must be greater than medium threshold");
+            throw new IllegalArgumentException(
+                    "High threshold must be greater than medium threshold");
         }
         this.highThreshold = highThreshold;
         this.mediumThreshold = mediumThreshold;

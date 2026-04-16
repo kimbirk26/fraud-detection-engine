@@ -5,6 +5,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Locale;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -22,15 +25,12 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.Locale;
-import java.util.Objects;
-
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    private static final Logger securityLog = LoggerFactory.getLogger("com.capitec.fraud.security.events");
+    private static final Logger securityLog =
+            LoggerFactory.getLogger("com.capitec.fraud.security.events");
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
@@ -44,9 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
@@ -81,19 +80,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String customerIdFromToken = jwtService.extractCustomerId(token);
             if (!isCustomerScopeValid(userDetails, customerIdFromToken)) {
-                securityLog.warn("event=jwt_customer_scope_mismatch reason=customer_scope_mismatch");
+                securityLog.warn(
+                        "event=jwt_customer_scope_mismatch reason=customer_scope_mismatch");
                 commenceUnauthorized(response);
                 return;
             }
 
-            var principal = new AuthenticatedRequestPrincipal(
-                    username,
-                    resolveCurrentCustomerId(userDetails));
+            var principal =
+                    new AuthenticatedRequestPrincipal(
+                            username, resolveCurrentCustomerId(userDetails));
 
-            var authToken = new UsernamePasswordAuthenticationToken(
-                    principal,
-                    null,
-                    userDetails.getAuthorities());
+            var authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            principal, null, userDetails.getAuthorities());
 
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
@@ -161,11 +160,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
-            justification = "reason is a fixed internal constant from authenticationFailureReason(); exception class name contains only safe characters")
+            justification =
+                    "reason is a fixed internal constant from authenticationFailureReason(); exception class name contains only safe characters")
     private void rejectUnauthorized(
-            HttpServletResponse response,
-            String reason,
-            Exception exception) throws IOException {
+            HttpServletResponse response, String reason, Exception exception) throws IOException {
         if (exception == null) {
             securityLog.warn("event=jwt_validation_failed reason={}", reason);
         } else {

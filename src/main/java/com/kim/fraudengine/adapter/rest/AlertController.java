@@ -34,8 +34,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
-
-@Tag(name = "Alerts", description = "Query and manage fraud alerts. Requires authority: alerts:read (own) or alerts:read:all (global)")
+@Tag(
+        name = "Alerts",
+        description =
+                "Query and manage fraud alerts. Requires authority: alerts:read (own) or alerts:read:all (global)")
 @RestController
 @RequestMapping("/api/v1/alerts")
 public class AlertController {
@@ -55,115 +57,153 @@ public class AlertController {
         this.customerAccessEvaluator = customerAccessEvaluator;
     }
 
-    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
-    @Operation(summary = "Get alert by ID",
-               description = "Returns the alert if it belongs to the authenticated customer, or 404 if not found or not accessible.")
-    @ApiResponse(responseCode = "200", description = "Alert found",
-                 content = @Content(schema = @Schema(implementation = AlertResponse.class)))
+    @SuppressFBWarnings(
+            value = "SPRING_ENDPOINT",
+            justification = "Intentional secured REST endpoint")
+    @Operation(
+            summary = "Get alert by ID",
+            description =
+                    "Returns the alert if it belongs to the authenticated customer, or 404 if not found or not accessible.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Alert found",
+            content = @Content(schema = @Schema(implementation = AlertResponse.class)))
     @ApiResponse(responseCode = "404", description = "Alert not found")
     @PreAuthorize("hasAuthority('alerts:read')")
     @GetMapping("/{id}")
-    public AlertResponse getById(@PathVariable UUID id,
-                                 Authentication authentication) {
-        AlertResponse response = getAlertsUseCase.getById(id)
-                .map(AlertMapper::toResponse)
-                .orElseThrow(() -> new AlertNotFoundException(id));
+    public AlertResponse getById(@PathVariable UUID id, Authentication authentication) {
+        AlertResponse response =
+                getAlertsUseCase
+                        .getById(id)
+                        .map(AlertMapper::toResponse)
+                        .orElseThrow(() -> new AlertNotFoundException(id));
         if (!customerAccessEvaluator.canRead(response.customerId(), authentication)) {
             throw new AlertNotFoundException(id);
         }
-        AuditLog.record("ALERT_VIEWED", auditDetails(authentication, id)
-                .append("customerId", response.customerId())
-                .append("severity", response.highestSeverity().name())
-                .append("status", response.status().name())
-                .build());
+        AuditLog.recordAuditLine(
+                "ALERT_VIEWED",
+                auditDetails(authentication, id)
+                        .append("customerId", response.customerId())
+                        .append("severity", response.highestSeverity().name())
+                        .append("status", response.status().name())
+                        .build());
         return response;
     }
 
-    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
-    @Operation(summary = "Update alert status",
-               description = "Updates the status of an alert. Requires alerts:write authority.")
-    @ApiResponse(responseCode = "200", description = "Status updated",
-                 content = @Content(schema = @Schema(implementation = AlertResponse.class)))
+    @SuppressFBWarnings(
+            value = "SPRING_ENDPOINT",
+            justification = "Intentional secured REST endpoint")
+    @Operation(
+            summary = "Update alert status",
+            description = "Updates the status of an alert. Requires alerts:write authority.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Status updated",
+            content = @Content(schema = @Schema(implementation = AlertResponse.class)))
     @ApiResponse(responseCode = "400", description = "Invalid request body")
     @ApiResponse(responseCode = "404", description = "Alert not found")
     @PreAuthorize("hasAuthority('alerts:write')")
     @PatchMapping("/{id}/status")
-    public AlertResponse updateStatus(@PathVariable UUID id,
-                                      @Valid @RequestBody UpdateAlertStatusRequest request,
-                                      Authentication authentication) {
-        AlertStatus previousStatus = getAlertsUseCase.getById(id)
-                .map(FraudAlert::status)
-                .orElseThrow(() -> new AlertNotFoundException(id));
-        AlertResponse response = updateAlertStatusUseCase.updateStatus(id, request.status())
-                .map(AlertMapper::toResponse)
-                .orElseThrow(() -> new AlertNotFoundException(id));
-        AuditLog.record("ALERT_STATUS_UPDATED", auditDetails(authentication, id)
-                .append("previousStatus", previousStatus.name())
-                .append("newStatus", request.status().name())
-                .append("customerId", response.customerId())
-                .build());
+    public AlertResponse updateStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateAlertStatusRequest request,
+            Authentication authentication) {
+        AlertStatus previousStatus =
+                getAlertsUseCase
+                        .getById(id)
+                        .map(FraudAlert::status)
+                        .orElseThrow(() -> new AlertNotFoundException(id));
+        AlertResponse response =
+                updateAlertStatusUseCase
+                        .updateStatus(id, request.status())
+                        .map(AlertMapper::toResponse)
+                        .orElseThrow(() -> new AlertNotFoundException(id));
+        AuditLog.recordAuditLine(
+                "ALERT_STATUS_UPDATED",
+                auditDetails(authentication, id)
+                        .append("previousStatus", previousStatus.name())
+                        .append("newStatus", request.status().name())
+                        .append("customerId", response.customerId())
+                        .build());
         return response;
     }
 
-    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
-    @Operation(summary = "Get alerts by customer ID",
-               description = "Returns all alerts for the given customer. Access restricted to the customer's own account, or users with alerts:read:all.")
+    @SuppressFBWarnings(
+            value = "SPRING_ENDPOINT",
+            justification = "Intentional secured REST endpoint")
+    @Operation(
+            summary = "Get alerts by customer ID",
+            description =
+                    "Returns all alerts for the given customer. Access restricted to the customer's own account, or users with alerts:read:all.")
     @ApiResponse(responseCode = "200", description = "Alerts returned (may be empty)")
-    @PreAuthorize("hasAuthority('alerts:read') and @customerAccess.canRead(#customerId, authentication)")
+    @PreAuthorize(
+            "hasAuthority('alerts:read') and @customerAccess.canRead(#customerId, authentication)")
     @GetMapping("/customer/{customerId}")
-    public List<AlertResponse> getByCustomer(@PathVariable String customerId,
-                                             Authentication authentication) {
-        List<AlertResponse> alerts = getAlertsUseCase.getByCustomerId(customerId)
-                .stream()
-                .map(AlertMapper::toResponse)
-                .toList();
-        AuditLog.record("ALERT_LIST_VIEWED", auditDetails(authentication, null)
-                .append("requestedCustomerId", customerId)
-                .append(RESULT_COUNT, alerts.size())
-                .build());
+    public List<AlertResponse> getByCustomer(
+            @PathVariable String customerId, Authentication authentication) {
+        List<AlertResponse> alerts =
+                getAlertsUseCase.getByCustomerId(customerId).stream()
+                        .map(AlertMapper::toResponse)
+                        .toList();
+        AuditLog.recordAuditLine(
+                "ALERT_LIST_VIEWED",
+                auditDetails(authentication, null)
+                        .append("requestedCustomerId", customerId)
+                        .append(RESULT_COUNT, alerts.size())
+                        .build());
         return alerts;
     }
 
-    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
-    @Operation(summary = "Filter alerts globally",
-               description = "Returns all alerts matching the given filter. Exactly one of `status` or `severity` is required. Requires alerts:read:all authority.")
+    @SuppressFBWarnings(
+            value = "SPRING_ENDPOINT",
+            justification = "Intentional secured REST endpoint")
+    @Operation(
+            summary = "Filter alerts globally",
+            description =
+                    "Returns all alerts matching the given filter. Exactly one of `status` or `severity` is required. Requires alerts:read:all authority.")
     @ApiResponse(responseCode = "200", description = "Alerts returned")
     @ApiResponse(responseCode = "400", description = "No filter parameter provided")
     @PreAuthorize("hasAuthority('alerts:read:all')")
     @GetMapping
     public List<AlertResponse> getByFilter(
-            @Parameter(description = "Filter by alert status") @RequestParam(required = false) AlertStatus status,
-            @Parameter(description = "Filter by severity") @RequestParam(required = false) Severity severity,
+            @Parameter(description = "Filter by alert status") @RequestParam(required = false)
+            AlertStatus status,
+            @Parameter(description = "Filter by severity") @RequestParam(required = false)
+            Severity severity,
             Authentication authentication) {
 
         if (status != null) {
-            List<AlertResponse> alerts = getAlertsUseCase.getByStatus(status)
-                    .stream()
-                    .map(AlertMapper::toResponse)
-                    .toList();
-            AuditLog.record("ALERT_FILTER_VIEWED", auditDetails(authentication, null)
-                    .append("filterType", "status")
-                    .append("filterValue", status.name())
-                    .append(RESULT_COUNT, alerts.size())
-                    .build());
+            List<AlertResponse> alerts =
+                    getAlertsUseCase.getByStatus(status).stream()
+                            .map(AlertMapper::toResponse)
+                            .toList();
+            AuditLog.recordAuditLine(
+                    "ALERT_FILTER_VIEWED",
+                    auditDetails(authentication, null)
+                            .append("filterType", "status")
+                            .append("filterValue", status.name())
+                            .append(RESULT_COUNT, alerts.size())
+                            .build());
             return alerts;
         }
         if (severity != null) {
-            List<AlertResponse> alerts = getAlertsUseCase.getBySeverity(severity)
-                    .stream()
-                    .map(AlertMapper::toResponse)
-                    .toList();
-            AuditLog.record("ALERT_FILTER_VIEWED", auditDetails(authentication, null)
-                    .append("filterType", "severity")
-                    .append("filterValue", severity.name())
-                    .append(RESULT_COUNT, alerts.size())
-                    .build());
+            List<AlertResponse> alerts =
+                    getAlertsUseCase.getBySeverity(severity).stream()
+                            .map(AlertMapper::toResponse)
+                            .toList();
+            AuditLog.recordAuditLine(
+                    "ALERT_FILTER_VIEWED",
+                    auditDetails(authentication, null)
+                            .append("filterType", "severity")
+                            .append("filterValue", severity.name())
+                            .append(RESULT_COUNT, alerts.size())
+                            .build());
             return alerts;
         }
 
         throw new InvalidFilterException(
-                "At least one filter parameter is required: status or severity. " +
-                "Example: GET /api/v1/alerts?status=OPEN");
+                "At least one filter parameter is required: status or severity. "
+                + "Example: GET /api/v1/alerts?status=OPEN");
     }
 
     private AuditDetailsBuilder auditDetails(Authentication authentication, UUID alertId) {

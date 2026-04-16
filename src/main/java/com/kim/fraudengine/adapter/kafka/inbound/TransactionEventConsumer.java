@@ -20,9 +20,11 @@ import java.util.List;
 /**
  * Inbound adapter: consumes transaction events from Kafka and delegates to the use case.
  */
-@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-        justification = "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF; " +
-                        "SpotBugs cannot see through the ifPresent lambda to the method-level suppression")
+@SuppressFBWarnings(
+        value = "CRLF_INJECTION_LOGS",
+        justification =
+                "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF; "
+                + "SpotBugs cannot see through the ifPresent lambda to the method-level suppression")
 @Component
 public class TransactionEventConsumer {
 
@@ -33,11 +35,14 @@ public class TransactionEventConsumer {
     private final ObjectMapper objectMapper;
     private final InternalAuthenticationRunner internalAuthenticationRunner;
 
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
-            justification = "Spring-managed singleton - effectively immutable after context initialization")
-    public TransactionEventConsumer(ProcessTransactionUseCase processTransactionUseCase,
-                                    ObjectMapper objectMapper,
-                                    InternalAuthenticationRunner internalAuthenticationRunner) {
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singleton - effectively immutable after context initialization")
+    public TransactionEventConsumer(
+            ProcessTransactionUseCase processTransactionUseCase,
+            ObjectMapper objectMapper,
+            InternalAuthenticationRunner internalAuthenticationRunner) {
         this.processTransactionUseCase = processTransactionUseCase;
         this.objectMapper = objectMapper;
         this.internalAuthenticationRunner = internalAuthenticationRunner;
@@ -46,19 +51,29 @@ public class TransactionEventConsumer {
     @KafkaListener(
             topics = "${app.kafka.topics.transactions}",
             groupId = "${app.kafka.consumer-group}",
-            containerFactory = "kafkaListenerContainerFactory"
-    )
-    public void consume(@Payload String payload,
-                        @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-                        @Header(KafkaHeaders.OFFSET) long offset) throws IOException {
-        log.debug("Received message from topic={} offset={}",
-                SensitiveLogValueSanitizer.normalizeForLog(topic), offset);
+            containerFactory = "kafkaListenerContainerFactory")
+    public void consume(
+            @Payload String payload,
+            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
+            @Header(KafkaHeaders.OFFSET) long offset)
+            throws IOException {
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Received message from topic={} offset={}",
+                    SensitiveLogValueSanitizer.normalizeForLog(topic),
+                    offset);
+        }
         TransactionEvent transactionEvent = objectMapper.readValue(payload, TransactionEvent.class);
-        internalAuthenticationRunner.runAs(
+        internalAuthenticationRunner
+                .runAs(
                         INTERNAL_PRINCIPAL_NAME,
                         List.of(InternalAuthenticationRunner.INTERNAL_PROCESSING_AUTHORITY),
                         () -> processTransactionUseCase.process(transactionEvent))
-                .ifPresent(alert ->
-                        log.warn("Alert raised: {} severity={}", alert.id(), alert.highestSeverity()));
+                .ifPresent(
+                        alert ->
+                                log.warn(
+                                        "Alert raised: {} severity={}",
+                                        alert.id(),
+                                        alert.highestSeverity()));
     }
 }

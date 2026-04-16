@@ -3,10 +3,9 @@ package com.kim.fraudengine.infrastructure.security;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import java.util.List;
 
 @Validated
 @ConfigurationProperties(prefix = "app.rate-limit.auth")

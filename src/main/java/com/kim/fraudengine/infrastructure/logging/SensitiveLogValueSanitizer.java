@@ -7,19 +7,19 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Centralizes masking and normalization for values written to application and
- * audit logs. The goal is to keep logs useful for correlation while avoiding
- * exposure of raw user and customer identifiers.
+ * Centralizes masking and normalization for values written to application and audit logs. The goal
+ * is to keep logs useful for correlation while avoiding exposure of raw user and customer
+ * identifiers.
  */
 public final class SensitiveLogValueSanitizer {
 
-    private static final Pattern UUID_SEGMENT = Pattern.compile(
-            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final Pattern UUID_SEGMENT =
+            Pattern.compile(
+                    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private static final String REDACTED = "[REDACTED]";
 
-    private SensitiveLogValueSanitizer() {
-    }
+    private SensitiveLogValueSanitizer() {}
 
     public static String sanitizeDetail(String key, Object value) {
         if (value == null) {
@@ -213,15 +213,11 @@ public final class SensitiveLogValueSanitizer {
     }
 
     private static boolean isIpKey(String key) {
-        return key.equals("remote")
-                || key.endsWith("ip")
-                || key.contains("remoteaddr");
+        return key.equals("remote") || key.endsWith("ip") || key.contains("remoteaddr");
     }
 
     private static boolean isPathKey(String key) {
-        return key.equals("path")
-                || key.endsWith("path")
-                || key.contains("uri");
+        return key.equals("path") || key.endsWith("path") || key.contains("uri");
     }
 
     private static boolean isTokenKey(String key) {

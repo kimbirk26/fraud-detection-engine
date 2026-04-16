@@ -5,12 +5,10 @@ import com.kim.fraudengine.domain.model.TransactionCategory;
 
 public final class CategoryMapper {
 
-    private CategoryMapper() {
-    }
+    private CategoryMapper() {}
 
     public static TransactionCategory toDomain(
-            TransactionRequest.TransactionCategoryResponse category
-    ) {
+            TransactionRequest.TransactionCategoryResponse category) {
         return switch (category) {
             case GROCERIES -> TransactionCategory.GROCERIES;
             case FUEL -> TransactionCategory.FUEL;

@@ -8,17 +8,23 @@ import com.kim.fraudengine.domain.model.AlertStatus;
 import com.kim.fraudengine.domain.model.FraudAlert;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
-
 import java.util.List;
 
 public final class AlertMapper {
 
-    private AlertMapper() {
-    }
+    private AlertMapper() {}
 
     public static AlertResponse toResponse(FraudAlert alert) {
-        List<RuleResultResponse> rules = alert.triggeredRules().stream().map(AlertMapper::toRuleResponse).toList();
-        return new AlertResponse(alert.id(), alert.transactionId(), alert.customerId(), rules, toResponse(alert.highestSeverity()), toResponse(alert.status()), alert.createdAt());
+        List<RuleResultResponse> rules =
+                alert.triggeredRules().stream().map(AlertMapper::toRuleResponse).toList();
+        return new AlertResponse(
+                alert.id(),
+                alert.transactionId(),
+                alert.customerId(),
+                rules,
+                toResponse(alert.highestSeverity()),
+                toResponse(alert.status()),
+                alert.createdAt());
     }
 
     private static RuleResultResponse toRuleResponse(RuleResult rule) {

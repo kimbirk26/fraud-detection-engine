@@ -15,16 +15,28 @@ public record FraudAlert(
         AlertStatus status,
         Instant createdAt) {
     public FraudAlert {
-        triggeredRules = List.copyOf(Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
+        triggeredRules =
+                List.copyOf(
+                        Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
     }
 
     public FraudAlert withStatus(AlertStatus newStatus) {
-        return new FraudAlert(id, transactionId, customerId, triggeredRules, highestSeverity, newStatus, createdAt);
+        return new FraudAlert(
+                id,
+                transactionId,
+                customerId,
+                triggeredRules,
+                highestSeverity,
+                newStatus,
+                createdAt);
     }
 
     public static FraudAlert from(TransactionEvent transactionEvent, List<RuleResult> triggered) {
         Severity highest =
-                triggered.stream().map(RuleResult::severity).max(Enum::compareTo).orElse(Severity.NONE);
+                triggered.stream()
+                        .map(RuleResult::severity)
+                        .max(Enum::compareTo)
+                        .orElse(Severity.NONE);
         return new FraudAlert(
                 UUID.randomUUID(),
                 transactionEvent.id(),

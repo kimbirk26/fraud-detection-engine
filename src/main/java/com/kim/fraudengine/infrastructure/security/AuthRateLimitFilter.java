@@ -8,33 +8,30 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.web.util.matcher.IpAddressMatcher;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Per-IP token-bucket rate limiter for the authentication endpoint.
  *
- * <p>Each unique client IP gets its own bucket. Requests are allowed up to
- * {@code capacity} tokens; the bucket refills at {@code refillPerMinute}
- * tokens per minute. Once a bucket is empty the request is rejected with
- * HTTP 429.
+ * <p>Each unique client IP gets its own bucket. Requests are allowed up to {@code capacity} tokens;
+ * the bucket refills at {@code refillPerMinute} tokens per minute. Once a bucket is empty the
+ * request is rejected with HTTP 429.
  *
- * <p>Note: buckets are held in-process memory. For multi-instance deployments
- * consider replacing the map with a distributed store (e.g. Redis via
- * bucket4j-redis) so limits are enforced cluster-wide.
+ * <p>Note: buckets are held in-process memory. For multi-instance deployments consider replacing
+ * the map with a distributed store (e.g. Redis via bucket4j-redis) so limits are enforced
+ * cluster-wide.
  *
- * <p>This filter is NOT a {@code @Component} — it is registered explicitly
- * via {@link SecurityConfig#authRateLimitFilterRegistration(AuthRateLimitFilter)}
- * to prevent Spring Boot from
+ * <p>This filter is NOT a {@code @Component} — it is registered explicitly via {@link
+ * SecurityConfig#authRateLimitFilterRegistration(AuthRateLimitFilter)} to prevent Spring Boot from
  * auto-registering it on all paths in addition to the configured URL pattern.
  */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
@@ -61,9 +58,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         this.capacity = properties.capacity();
         this.refillPerMinute = properties.refillPerMinute();
         this.trustForwardedHeaders = properties.trustForwardedHeaders();
-        this.trustedProxyMatchers = properties.trustedProxies().stream()
-                .map(IpAddressMatcher::new)
-                .toList();
+        this.trustedProxyMatchers =
+                properties.trustedProxies().stream().map(IpAddressMatcher::new).toList();
         this.entryTtl = Duration.ofMinutes(properties.entryTtlMinutes());
         this.maxTrackedClients = properties.maxTrackedClients();
         this.cleanupInterval = properties.cleanupInterval();
@@ -76,9 +72,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         long nowMillis = clock.millis();
@@ -99,7 +94,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (probe.isConsumed()) {
             filterChain.doFilter(request, response);
         } else {
-            securityLog.warn("event=rate_limit_exceeded path={} remote={}",
+            securityLog.warn(
+                    "event=rate_limit_exceeded path={} remote={}",
                     SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
                     SensitiveLogValueSanitizer.normalizeForLog(clientIp));
             writeTooManyRequests(response, retryAfterSeconds(probe));
@@ -108,10 +104,11 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private Bucket newBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.builder()
-                        .capacity(capacity)
-                        .refillGreedy(refillPerMinute, Duration.ofMinutes(1))
-                        .build())
+                .addLimit(
+                        Bandwidth.builder()
+                                .capacity(capacity)
+                                .refillGreedy(refillPerMinute, Duration.ofMinutes(1))
+                                .build())
                 .build();
     }
 
@@ -154,11 +151,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Returns the originating IP. Forwarded headers are only trusted when the
-     * request itself arrived through a configured trusted proxy. When a trusted
-     * proxy appends to an existing X-Forwarded-For chain, we walk from right to
-     * left and take the first non-proxy hop so spoofed left-most values do not
-     * create fresh buckets.
+     * Returns the originating IP. Forwarded headers are only trusted when the request itself
+     * arrived through a configured trusted proxy. When a trusted proxy appends to an existing
+     * X-Forwarded-For chain, we walk from right to left and take the first non-proxy hop so spoofed
+     * left-most values do not create fresh buckets.
      */
     private String resolveClientIp(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
@@ -205,8 +201,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return null;
         }
 
-        boolean hasIpCharactersOnly = trimmed.chars().allMatch(ch ->
-                Character.digit(ch, 16) != -1 || ch == '.' || ch == ':');
+        boolean hasIpCharactersOnly =
+                trimmed.chars()
+                        .allMatch(ch -> Character.digit(ch, 16) != -1 || ch == '.' || ch == ':');
         boolean resemblesIpLiteral = trimmed.contains(".") || trimmed.contains(":");
         return hasIpCharactersOnly && resemblesIpLiteral ? trimmed : null;
     }
@@ -219,7 +216,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         return Math.max(1L, (nanosToWait + 999_999_999L) / 1_000_000_000L);
     }
 
-    private void writeTooManyRequests(HttpServletResponse response, long retryAfterSeconds) throws IOException {
+    private void writeTooManyRequests(HttpServletResponse response, long retryAfterSeconds)
+            throws IOException {
         response.setStatus(429);
         response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
         response.setContentType("application/json");

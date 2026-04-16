@@ -1,8 +1,18 @@
 package com.kim.fraudengine.adapter.persistence;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.kim.fraudengine.adapter.persistence.entity.ProcessedTransactionEntity;
 import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionEvent;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,25 +22,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class TransactionHistoryRepositoryAdapterTest {
 
-    @Mock
-    private ProcessedTransactionJpaRepository jpaRepository;
+    @Mock private ProcessedTransactionJpaRepository jpaRepository;
 
-    @Mock
-    private JdbcTemplate jdbcTemplate;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     private TransactionHistoryRepositoryAdapter adapter;
 
@@ -45,11 +42,26 @@ class TransactionHistoryRepositoryAdapterTest {
 
         adapter.save(transaction);
 
-        ArgumentCaptor<ProcessedTransactionEntity> entityCaptor = ArgumentCaptor.forClass(ProcessedTransactionEntity.class);
+        ArgumentCaptor<ProcessedTransactionEntity> entityCaptor =
+                ArgumentCaptor.forClass(ProcessedTransactionEntity.class);
         verify(jpaRepository).saveAndFlush(entityCaptor.capture());
         ProcessedTransactionEntity entity = entityCaptor.getValue();
 
-        assertThat(entity).extracting("transactionId", "customerId", "merchantId", "merchantName", "currency", "countryCode").containsExactly(transaction.id(), transaction.customerId(), transaction.merchantId(), transaction.merchantName(), transaction.currency(), transaction.countryCode());
+        assertThat(entity)
+                .extracting(
+                        "transactionId",
+                        "customerId",
+                        "merchantId",
+                        "merchantName",
+                        "currency",
+                        "countryCode")
+                .containsExactly(
+                        transaction.id(),
+                        transaction.customerId(),
+                        transaction.merchantId(),
+                        transaction.merchantName(),
+                        transaction.currency(),
+                        transaction.countryCode());
     }
 
     @Test
@@ -67,7 +79,8 @@ class TransactionHistoryRepositoryAdapterTest {
 
     @Test
     void shouldAcquireCustomerLockUsingAdvisoryLockQuery() throws Exception {
-        ArgumentCaptor<ConnectionCallback<Void>> callbackCaptor = ArgumentCaptor.forClass(ConnectionCallback.class);
+        ArgumentCaptor<ConnectionCallback<Void>> callbackCaptor =
+                ArgumentCaptor.forClass(ConnectionCallback.class);
         when(jdbcTemplate.execute(any(ConnectionCallback.class))).thenReturn(null);
 
         adapter.lockCustomer("CUST001");
@@ -87,6 +100,15 @@ class TransactionHistoryRepositoryAdapterTest {
     }
 
     private TransactionEvent transaction() {
-        return new TransactionEvent(UUID.fromString("11111111-1111-1111-1111-111111111111"), "CUST001", new BigDecimal("1500.00"), "MERCH001", "Test Merchant", TransactionCategory.ONLINE_PURCHASE, "ZAR", "ZA", Instant.parse("2024-01-01T10:00:00Z"));
+        return new TransactionEvent(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "CUST001",
+                new BigDecimal("1500.00"),
+                "MERCH001",
+                "Test Merchant",
+                TransactionCategory.ONLINE_PURCHASE,
+                "ZAR",
+                "ZA",
+                Instant.parse("2024-01-01T10:00:00Z"));
     }
 }

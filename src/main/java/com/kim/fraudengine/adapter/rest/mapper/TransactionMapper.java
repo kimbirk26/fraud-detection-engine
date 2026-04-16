@@ -9,13 +9,13 @@ public class TransactionMapper {
 
     public TransactionEvent toEvent(TransactionRequest request) {
         return TransactionEvent.of(
+                request.transactionId(),
                 request.customerId(),
                 request.amount(),
                 request.merchantId(),
                 request.merchantName(),
                 CategoryMapper.toDomain(request.category()),
                 request.currency(),
-                request.countryCode()
-        );
+                request.countryCode());
     }
 }

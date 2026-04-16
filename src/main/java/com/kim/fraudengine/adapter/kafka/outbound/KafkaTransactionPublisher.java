@@ -29,33 +29,39 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
     private final ObjectMapper objectMapper;
     private final String topic;
 
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
-            justification = "Spring-managed singletons - effectively immutable after context initialization")
-    public KafkaTransactionPublisher(KafkaTemplate<String, String> kafkaTemplate,
-                                     ObjectMapper objectMapper,
-                                     @Value("${app.kafka.topics.transactions}") String topic) {
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singletons - effectively immutable after context initialization")
+    public KafkaTransactionPublisher(
+            KafkaTemplate<String, String> kafkaTemplate,
+            ObjectMapper objectMapper,
+            @Value("${app.kafka.topics.transactions}") String topic) {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
         this.topic = topic;
     }
 
     @Override
-    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-            justification = "transactionEvent.id() is a UUID and topic is a config string - neither can contain CRLF")
+    @SuppressFBWarnings(
+            value = "CRLF_INJECTION_LOGS",
+            justification =
+                    "transactionEvent.id() is a UUID and topic is a config string - neither can contain CRLF")
     public void publish(TransactionEvent transactionEvent) {
         try {
             String payload = objectMapper.writeValueAsString(transactionEvent);
-            SendResult<String, String> result = kafkaTemplate
-                    .send(topic, transactionEvent.customerId(), payload)
-                    .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            SendResult<String, String> result =
+                    kafkaTemplate
+                            .send(topic, transactionEvent.customerId(), payload)
+                            .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-            log.info("Published transaction {} to topic {} partition={} offset={}",
+            log.info(
+                    "Published transaction {} to topic {} partition={} offset={}",
                     transactionEvent.id(),
                     topic,
                     result.getRecordMetadata().partition(),
                     result.getRecordMetadata().offset());
         } catch (JsonProcessingException | ExecutionException | TimeoutException e) {
-            log.error("Failed to publish transaction {}", transactionEvent.id(), e);
             throw new IllegalStateException("Failed to publish transaction event", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

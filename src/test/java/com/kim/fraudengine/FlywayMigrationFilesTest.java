@@ -1,11 +1,10 @@
 package com.kim.fraudengine;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class FlywayMigrationFilesTest {
 
@@ -39,7 +38,8 @@ class FlywayMigrationFilesTest {
                 .contains("create table auth_users")
                 .contains("password_hash varchar(255) not null")
                 .contains("create table auth_user_authorities")
-                .contains("foreign key (username) references auth_users (username) on delete cascade");
+                .contains(
+                        "foreign key (username) references auth_users (username) on delete cascade");
     }
 
     private String read(String path) throws IOException {

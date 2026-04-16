@@ -30,7 +30,11 @@ public final class VelocityRule implements FraudRule {
         long totalTransactions = recentTransactionCount + 1;
 
         if (totalTransactions > maxTransactions) {
-            return RuleResult.flag(ruleName(), Severity.HIGH, "%d transactions in %d minutes (limit: %d)".formatted(totalTransactions, windowMinutes, maxTransactions));
+            return RuleResult.flag(
+                    ruleName(),
+                    Severity.HIGH,
+                    "%d transactions in %d minutes (limit: %d)"
+                            .formatted(totalTransactions, windowMinutes, maxTransactions));
         }
 
         return RuleResult.pass(ruleName());

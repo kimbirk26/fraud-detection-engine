@@ -1,11 +1,10 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import java.util.Map;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Map;
 
 public class MigrationAwarePasswordEncoder implements PasswordEncoder {
 
@@ -20,7 +19,9 @@ public class MigrationAwarePasswordEncoder implements PasswordEncoder {
 
     MigrationAwarePasswordEncoder(PasswordEncoder bcryptEncoder, PasswordEncoder argon2Encoder) {
         this.bcryptEncoder = bcryptEncoder;
-        this.delegatingEncoder = new DelegatingPasswordEncoder(ARGON2_ID, Map.of(ARGON2_ID, argon2Encoder, "bcrypt", bcryptEncoder));
+        this.delegatingEncoder =
+                new DelegatingPasswordEncoder(
+                        ARGON2_ID, Map.of(ARGON2_ID, argon2Encoder, "bcrypt", bcryptEncoder));
     }
 
     @Override
