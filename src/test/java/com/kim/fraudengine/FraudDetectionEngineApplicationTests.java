@@ -1,5 +1,7 @@
 package com.kim.fraudengine;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.kim.fraudengine.application.FraudDetectionService;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
@@ -10,22 +12,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionOperations;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
         classes = {
-                FraudDetectionEngineApplicationTests.TestConfig.class,
-                FraudDetectionService.class,
-                RuleConfig.class
+            FraudDetectionEngineApplicationTests.TestConfig.class,
+            FraudDetectionService.class,
+            RuleConfig.class
         })
 class FraudDetectionEngineApplicationTests {
 
-    @Autowired
-    private FraudDetectionService service;
+    @Autowired private FraudDetectionService service;
 
     @Test
     void contextLoads() {

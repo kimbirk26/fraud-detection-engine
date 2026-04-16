@@ -12,8 +12,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
@@ -55,15 +56,16 @@ class JwtAuthenticationFilterTest {
 
         when(jwtService.extractUsername("signed.jwt.token")).thenReturn("analyst");
         when(userDetailsService.loadUserByUsername("analyst"))
-                .thenReturn(new CustomerScopedUserDetails(
-                        "analyst",
-                        "{argon2}encoded",
-                        false,
-                        true,
-                        true,
-                        true,
-                        List.of(new SimpleGrantedAuthority("alerts:read:all")),
-                        null));
+                .thenReturn(
+                        new CustomerScopedUserDetails(
+                                "analyst",
+                                "{argon2}encoded",
+                                false,
+                                true,
+                                true,
+                                true,
+                                List.of(new SimpleGrantedAuthority("alerts:read:all")),
+                                null));
 
         filter.doFilter(request, response, filterChain);
 
@@ -79,11 +81,12 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer signed.jwt.token");
         MockHttpServletResponse response = new MockHttpServletResponse();
         RecordingFilterChain filterChain = new RecordingFilterChain();
-        CustomerScopedUserDetails currentUser = new CustomerScopedUserDetails(
-                "customer_cust001",
-                "{argon2}encoded",
-                List.of(new SimpleGrantedAuthority("alerts:read")),
-                "CUST001");
+        CustomerScopedUserDetails currentUser =
+                new CustomerScopedUserDetails(
+                        "customer_cust001",
+                        "{argon2}encoded",
+                        List.of(new SimpleGrantedAuthority("alerts:read")),
+                        "CUST001");
 
         when(jwtService.extractUsername("signed.jwt.token")).thenReturn("customer_cust001");
         when(userDetailsService.loadUserByUsername("customer_cust001")).thenReturn(currentUser);
@@ -95,7 +98,7 @@ class JwtAuthenticationFilterTest {
         assertThat(filterChain.invoked).isTrue();
         assertThat(filterChain.authentication).isNotNull();
         assertThat(filterChain.authentication.getAuthorities())
-                .extracting(grantedAuthority -> grantedAuthority.getAuthority())
+                .extracting(GrantedAuthority::getAuthority)
                 .containsExactly("alerts:read");
         assertThat(filterChain.authentication.getPrincipal())
                 .isEqualTo(new AuthenticatedRequestPrincipal("customer_cust001", "CUST001"));

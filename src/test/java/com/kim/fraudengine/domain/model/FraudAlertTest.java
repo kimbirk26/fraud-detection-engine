@@ -1,14 +1,13 @@
 package com.kim.fraudengine.domain.model;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class FraudAlertTest {
 
@@ -17,14 +16,15 @@ class FraudAlertTest {
         List<RuleResult> triggeredRules = new ArrayList<>();
         triggeredRules.add(RuleResult.flag("BLACKLIST_MATCH", Severity.HIGH, "blacklisted"));
 
-        FraudAlert alert = new FraudAlert(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "CUST001",
-                triggeredRules,
-                Severity.HIGH,
-                AlertStatus.OPEN,
-                Instant.parse("2026-04-11T00:00:00Z"));
+        FraudAlert alert =
+                new FraudAlert(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "CUST001",
+                        triggeredRules,
+                        Severity.HIGH,
+                        AlertStatus.OPEN,
+                        Instant.parse("2026-04-11T00:00:00Z"));
 
         triggeredRules.clear();
 

@@ -24,33 +24,35 @@ public class AuthBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AuthBootstrapRunner.class);
 
-    private static final String UPSERT_USER_SQL = """
-            insert into auth_users (
-                username,
-                password_hash,
-                customer_id,
-                enabled,
-                account_non_locked,
-                account_non_expired,
-                credentials_non_expired
-            )
-            values (?, ?, ?, ?, ?, ?, ?)
-            on conflict (username) do update set
-                password_hash = excluded.password_hash,
-                customer_id = excluded.customer_id,
-                enabled = excluded.enabled,
-                account_non_locked = excluded.account_non_locked,
-                account_non_expired = excluded.account_non_expired,
-                credentials_non_expired = excluded.credentials_non_expired,
-                updated_at = current_timestamp
-            """;
+    private static final String UPSERT_USER_SQL =
+            """
+                    insert into auth_users (
+                        username,
+                        password_hash,
+                        customer_id,
+                        enabled,
+                        account_non_locked,
+                        account_non_expired,
+                        credentials_non_expired
+                    )
+                    values (?, ?, ?, ?, ?, ?, ?)
+                    on conflict (username) do update set
+                        password_hash = excluded.password_hash,
+                        customer_id = excluded.customer_id,
+                        enabled = excluded.enabled,
+                        account_non_locked = excluded.account_non_locked,
+                        account_non_expired = excluded.account_non_expired,
+                        credentials_non_expired = excluded.credentials_non_expired,
+                        updated_at = current_timestamp
+                    """;
     private static final String DELETE_AUTHORITIES_SQL =
             "delete from auth_user_authorities where username = ?";
-    private static final String INSERT_AUTHORITY_SQL = """
-            insert into auth_user_authorities (username, authority)
-            values (?, ?)
-            on conflict (username, authority) do nothing
-            """;
+    private static final String INSERT_AUTHORITY_SQL =
+            """
+                    insert into auth_user_authorities (username, authority)
+                    values (?, ?)
+                    on conflict (username, authority) do nothing
+                    """;
 
     private final AuthBootstrapProperties properties;
     private final JdbcTemplate jdbcTemplate;
@@ -58,8 +60,10 @@ public class AuthBootstrapRunner implements ApplicationRunner {
     private final JdbcCustomerScopedUserDetailsService userDetailsService;
     private final TransactionOperations transactionOperations;
 
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
-            justification = "Spring-managed singletons - effectively immutable after context initialization")
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singletons - effectively immutable after context initialization")
     public AuthBootstrapRunner(
             AuthBootstrapProperties properties,
             JdbcTemplate jdbcTemplate,
@@ -80,8 +84,8 @@ public class AuthBootstrapRunner implements ApplicationRunner {
             return;
         }
 
-        transactionOperations.executeWithoutResult(status ->
-                properties.users().forEach(this::synchroniseUser));
+        transactionOperations.executeWithoutResult(
+                status -> properties.users().forEach(this::synchroniseUser));
     }
 
     private void synchroniseUser(AuthBootstrapProperties.BootstrapUser configuredUser) {
@@ -89,15 +93,21 @@ public class AuthBootstrapRunner implements ApplicationRunner {
 
         String desiredCustomerId = normalize(configuredUser.customerId());
         String passwordHash = resolvePasswordHash(configuredUser, existingUser);
-        boolean userChanged = existingUser == null
+        boolean userChanged =
+                existingUser == null
                 || !Objects.equals(existingUser.customerId(), desiredCustomerId)
                 || existingUser.isEnabled() != configuredUser.enabledFlag()
-                || existingUser.isAccountNonLocked() != configuredUser.accountNonLockedFlag()
-                || existingUser.isAccountNonExpired() != configuredUser.accountNonExpiredFlag()
-                || existingUser.isCredentialsNonExpired() != configuredUser.credentialsNonExpiredFlag()
+                || existingUser.isAccountNonLocked()
+                   != configuredUser.accountNonLockedFlag()
+                || existingUser.isAccountNonExpired()
+                   != configuredUser.accountNonExpiredFlag()
+                || existingUser.isCredentialsNonExpired()
+                   != configuredUser.credentialsNonExpiredFlag()
                 || !Objects.equals(existingUser.getPassword(), passwordHash);
-        boolean authoritiesChanged = existingUser == null
-                || !sameAuthorities(existingUser.getAuthorities(), configuredUser.authorities());
+        boolean authoritiesChanged =
+                existingUser == null
+                || !sameAuthorities(
+                        existingUser.getAuthorities(), configuredUser.authorities());
 
         if (userChanged) {
             jdbcTemplate.update(
@@ -113,14 +123,20 @@ public class AuthBootstrapRunner implements ApplicationRunner {
 
         if (authoritiesChanged) {
             jdbcTemplate.update(DELETE_AUTHORITIES_SQL, configuredUser.username());
-            configuredUser.authorities()
-                    .forEach(authority ->
-                            jdbcTemplate.update(INSERT_AUTHORITY_SQL, configuredUser.username(), authority));
+            configuredUser
+                    .authorities()
+                    .forEach(
+                            authority ->
+                                    jdbcTemplate.update(
+                                            INSERT_AUTHORITY_SQL,
+                                            configuredUser.username(),
+                                            authority));
         }
 
+        String status = (userChanged || authoritiesChanged ? "updated" : "verified");
         log.info(
                 "Auth bootstrap {} user {}",
-                existingUser == null ? "created" : (userChanged || authoritiesChanged ? "updated" : "verified"),
+                existingUser == null ? "created" : status,
                 SensitiveLogValueSanitizer.normalizeForLog(configuredUser.username()));
     }
 
@@ -140,7 +156,7 @@ public class AuthBootstrapRunner implements ApplicationRunner {
         }
 
         if (passwordEncoder.matches(configuredUser.password(), existingUser.getPassword())
-                && !passwordEncoder.upgradeEncoding(existingUser.getPassword())) {
+            && !passwordEncoder.upgradeEncoding(existingUser.getPassword())) {
             return existingUser.getPassword();
         }
 
@@ -148,17 +164,17 @@ public class AuthBootstrapRunner implements ApplicationRunner {
     }
 
     private boolean sameAuthorities(
-            Collection<?> existingAuthorities,
-            List<String> configuredAuthorities) {
-        List<String> current = existingAuthorities.stream()
-                .map(authority -> authority instanceof GrantedAuthority grantedAuthority
-                        ? grantedAuthority.getAuthority()
-                        : authority.toString())
-                .sorted()
-                .toList();
-        List<String> configured = configuredAuthorities.stream()
-                .sorted()
-                .toList();
+            Collection<?> existingAuthorities, List<String> configuredAuthorities) {
+        List<String> current =
+                existingAuthorities.stream()
+                        .map(
+                                authority ->
+                                        authority instanceof GrantedAuthority grantedAuthority
+                                                ? grantedAuthority.getAuthority()
+                                                : authority.toString())
+                        .sorted()
+                        .toList();
+        List<String> configured = configuredAuthorities.stream().sorted().toList();
         return current.equals(configured);
     }
 

@@ -1,6 +1,8 @@
 package com.kim.fraudengine.infrastructure.security;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,26 +11,26 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-
 @Service
 public class JdbcCustomerScopedUserDetailsService
         implements UserDetailsService, UserDetailsPasswordService {
 
-    private static final String LOAD_USER_SQL = """
+    private static final String LOAD_USER_SQL =
+            """
             select username, password_hash, customer_id, enabled,
                    account_non_locked, account_non_expired, credentials_non_expired
             from auth_users
             where username = ?
             """;
-    private static final String LOAD_AUTHORITIES_SQL = """
+    private static final String LOAD_AUTHORITIES_SQL =
+            """
             select authority
             from auth_user_authorities
             where username = ?
             order by authority
             """;
-    private static final String UPDATE_PASSWORD_SQL = """
+    private static final String UPDATE_PASSWORD_SQL =
+            """
             update auth_users
             set password_hash = ?, updated_at = current_timestamp
             where username = ?
@@ -36,8 +38,10 @@ public class JdbcCustomerScopedUserDetailsService
 
     private final JdbcTemplate jdbcTemplate;
 
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
-            justification = "Spring-managed singleton - effectively immutable after context initialization")
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singleton - effectively immutable after context initialization")
     public JdbcCustomerScopedUserDetailsService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -57,11 +61,10 @@ public class JdbcCustomerScopedUserDetailsService
         }
 
         Map<String, Object> row = rows.getFirst();
-        List<SimpleGrantedAuthority> authorities = jdbcTemplate
-                .queryForList(LOAD_AUTHORITIES_SQL, String.class, username)
-                .stream()
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+        List<SimpleGrantedAuthority> authorities =
+                jdbcTemplate.queryForList(LOAD_AUTHORITIES_SQL, String.class, username).stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .toList();
 
         return new CustomerScopedUserDetails(
                 requiredString(row, "username"),
@@ -81,9 +84,10 @@ public class JdbcCustomerScopedUserDetailsService
             throw new UsernameNotFoundException("User not found: " + user.getUsername());
         }
 
-        String customerId = user instanceof CustomerScopedPrincipal customerScopedPrincipal
-                ? customerScopedPrincipal.customerId()
-                : null;
+        String customerId =
+                user instanceof CustomerScopedPrincipal customerScopedPrincipal
+                        ? customerScopedPrincipal.customerId()
+                        : null;
 
         return new CustomerScopedUserDetails(
                 user.getUsername(),

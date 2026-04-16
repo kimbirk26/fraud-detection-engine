@@ -1,7 +1,6 @@
 package com.kim.fraudengine.domain.port.outbound;
 
 import com.kim.fraudengine.domain.model.TransactionEvent;
-
 import java.time.Instant;
 import java.util.UUID;
 

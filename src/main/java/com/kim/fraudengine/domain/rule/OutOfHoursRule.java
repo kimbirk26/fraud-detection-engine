@@ -4,7 +4,6 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
-
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -28,12 +27,20 @@ public class OutOfHoursRule implements FraudRule {
         ZonedDateTime zonedTime = transaction.timestamp().atZone(zoneId);
         int hour = zonedTime.getHour();
 
-        boolean inWindow = suspiciousHourStart < suspiciousHourEnd ? hour >= suspiciousHourStart && hour < suspiciousHourEnd // e.g. 00–05
-                : hour >= suspiciousHourStart || hour < suspiciousHourEnd; // e.g. 22–06 (wraps midnight)
+        boolean inWindow =
+                suspiciousHourStart < suspiciousHourEnd
+                        ? hour >= suspiciousHourStart && hour < suspiciousHourEnd // e.g. 00–05
+                        : hour >= suspiciousHourStart
+                                || hour < suspiciousHourEnd; // e.g. 22–06 (wraps midnight)
 
         if (inWindow) {
             String zoneLabel = zonedTime.getZone().getId();
-            return RuleResult.flag(ruleName(), Severity.MEDIUM, String.format("Transaction at %02d:00 %s (suspicious window: %02d:00–%02d:00)", hour, zoneLabel, suspiciousHourStart, suspiciousHourEnd));
+            return RuleResult.flag(
+                    ruleName(),
+                    Severity.MEDIUM,
+                    String.format(
+                            "Transaction at %02d:00 %s (suspicious window: %02d:00–%02d:00)",
+                            hour, zoneLabel, suspiciousHourStart, suspiciousHourEnd));
         }
         return RuleResult.pass(ruleName());
     }

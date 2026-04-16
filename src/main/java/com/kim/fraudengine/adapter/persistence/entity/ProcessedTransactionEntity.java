@@ -7,7 +7,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -45,8 +44,7 @@ public class ProcessedTransactionEntity {
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
-    protected ProcessedTransactionEntity() {
-    }
+    protected ProcessedTransactionEntity() {}
 
     public ProcessedTransactionEntity(
             UUID transactionId,

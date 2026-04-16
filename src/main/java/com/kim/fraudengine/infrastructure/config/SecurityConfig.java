@@ -8,6 +8,7 @@ import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -37,15 +38,14 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
-
 @SuppressFBWarnings(
         value = {"SPRING_CSRF_PROTECTION_DISABLED", "CRLF_INJECTION_LOGS"},
-        justification = "SPRING_CSRF_PROTECTION_DISABLED: stateless JWT API — no sessions, cookies, or form login; " +
-                        "CSRF not applicable. Annotation must be at class level because csrf.disable() is called " +
-                        "inside a lambda (synthetic class) not covered by method-level suppression. " +
-                        "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer; " +
-                        "log callbacks are lambdas whose synthetic classes are not covered by method-level suppression")
+        justification =
+                "SPRING_CSRF_PROTECTION_DISABLED: stateless JWT API — no sessions, cookies, or form login; "
+                        + "CSRF not applicable. Annotation must be at class level because csrf.disable() is called "
+                        + "inside a lambda (synthetic class) not covered by method-level suppression. "
+                        + "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer; "
+                        + "log callbacks are lambdas whose synthetic classes are not covered by method-level suppression")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -57,7 +57,8 @@ public class SecurityConfig {
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
-            securityLog.warn("event=authentication_required path={} remote={} reason={}",
+            securityLog.warn(
+                    "event=authentication_required path={} remote={} reason={}",
                     SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
                     SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
                     SensitiveLogValueSanitizer.normalizeForLog(authException.getMessage()));
@@ -70,7 +71,8 @@ public class SecurityConfig {
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
-            securityLog.warn("event=access_denied principal={} path={} remote={} reason={}",
+            securityLog.warn(
+                    "event=access_denied principal={} path={} remote={} reason={}",
                     SensitiveLogValueSanitizer.maskPrincipal(currentPrincipalName()),
                     SensitiveLogValueSanitizer.normalizeForLog(request.getRequestURI()),
                     SensitiveLogValueSanitizer.normalizeForLog(request.getRemoteAddr()),
@@ -89,7 +91,8 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilterRegistration(
             RequestCorrelationFilter requestCorrelationFilter) {
-        FilterRegistrationBean<RequestCorrelationFilter> registration = new FilterRegistrationBean<>();
+        FilterRegistrationBean<RequestCorrelationFilter> registration =
+                new FilterRegistrationBean<>();
         registration.setFilter(requestCorrelationFilter);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         registration.addUrlPatterns("/*");
@@ -122,40 +125,52 @@ public class SecurityConfig {
 
     @Bean
     @SuppressWarnings("java:S4502")
-    SecurityFilterChain filterChain(HttpSecurity http,
-                                    JwtAuthenticationFilter jwtAuthenticationFilter,
-                                    AuthenticationEntryPoint authenticationEntryPoint,
-                                    AccessDeniedHandler accessDeniedHandler) throws Exception {
+    SecurityFilterChain filterChain(
+            HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            AuthenticationEntryPoint authenticationEntryPoint,
+            AccessDeniedHandler accessDeniedHandler)
+            throws Exception {
         http
                 // Safe here because this API is stateless and uses Bearer JWTs in the
                 // Authorization header only. We do not use sessions, form login,
                 // HTTP Basic, remember-me, or cookie-based authentication.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler)
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/token").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .anyRequest().authenticated()
-                )
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(
+                        ex ->
+                                ex.authenticationEntryPoint(authenticationEntryPoint)
+                                        .accessDeniedHandler(accessDeniedHandler))
+                .authorizeHttpRequests(
+                        auth ->
+                                auth.requestMatchers("/api/v1/auth/token")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                "/actuator/health",
+                                                "/actuator/health/**",
+                                                "/actuator/info")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**",
+                                                "/swagger-ui.html")
+                                        .permitAll()
+                                        .anyRequest()
+                                        .authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(
+                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * Argon2id for new hashes, with bcrypt support for migration.
-     * This keeps legacy passwords working while making Argon2id the default
-     * for all newly encoded or upgraded hashes.
+     * Argon2id for new hashes, with bcrypt support for migration. This keeps legacy passwords
+     * working while making Argon2id the default for all newly encoded or upgraded hashes.
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -163,15 +178,13 @@ public class SecurityConfig {
     }
 
     /**
-     * DaoAuthenticationProvider wires together UserDetailsService and
-     * PasswordEncoder — Spring uses this to validate login credentials.
-     * When the user store supports it, successful logins can transparently
-     * upgrade legacy hashes to the current encoder.
+     * DaoAuthenticationProvider wires together UserDetailsService and PasswordEncoder — Spring uses
+     * this to validate login credentials. When the user store supports it, successful logins can
+     * transparently upgrade legacy hashes to the current encoder.
      */
     @Bean
     public AuthenticationProvider authenticationProvider(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
+            UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
         var provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         if (userDetailsService instanceof UserDetailsPasswordService passwordService) {
@@ -180,12 +193,10 @@ public class SecurityConfig {
         return provider;
     }
 
-    /**
-     * Exposes AuthenticationManager as a bean so AuthController can inject it.
-     */
+    /** Exposes AuthenticationManager as a bean so AuthController can inject it. */
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
         return config.getAuthenticationManager();
     }
 
@@ -193,15 +204,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         var configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(corsProperties.allowedOrigins());
-        configuration.setAllowedMethods(List.of(
-                HttpMethod.GET.name(),
-                HttpMethod.POST.name(),
-                HttpMethod.PATCH.name(),
-                HttpMethod.OPTIONS.name()));
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                RequestCorrelationFilter.CORRELATION_HEADER));
+        configuration.setAllowedMethods(
+                List.of(
+                        HttpMethod.GET.name(),
+                        HttpMethod.POST.name(),
+                        HttpMethod.PATCH.name(),
+                        HttpMethod.OPTIONS.name()));
+        configuration.setAllowedHeaders(
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        RequestCorrelationFilter.CORRELATION_HEADER));
         configuration.setExposedHeaders(List.of(RequestCorrelationFilter.CORRELATION_HEADER));
         configuration.setAllowCredentials(false);
 
@@ -212,8 +225,7 @@ public class SecurityConfig {
 
     private String currentPrincipalName() {
         Authentication authentication =
-                org.springframework.security.core.context.SecurityContextHolder
-                        .getContext()
+                org.springframework.security.core.context.SecurityContextHolder.getContext()
                         .getAuthentication();
         if (authentication == null || authentication.getName() == null) {
             return "anonymous";

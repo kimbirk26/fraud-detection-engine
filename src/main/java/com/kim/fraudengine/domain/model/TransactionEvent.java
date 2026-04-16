@@ -22,7 +22,15 @@ public record TransactionEvent(
             TransactionCategory category,
             String currency,
             String countryCode) {
-        return of(null, customerId, amount, merchantId, merchantName, category, currency, countryCode);
+        return of(
+                null,
+                customerId,
+                amount,
+                merchantId,
+                merchantName,
+                category,
+                currency,
+                countryCode);
     }
 
     public static TransactionEvent of(

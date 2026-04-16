@@ -4,9 +4,7 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
-
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import java.math.BigDecimal;
 import java.util.Locale;
 
@@ -30,8 +28,10 @@ public final class ForeignCountryRule implements FraudRule {
     }
 
     @Override
-    @SuppressFBWarnings(value = "IMPROPER_UNICODE",
-            justification = "Country codes are ASCII-only ISO 3166-1 alpha-2; Locale.ROOT is correct here")
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification =
+                    "Country codes are ASCII-only ISO 3166-1 alpha-2; Locale.ROOT is correct here")
     public RuleResult evaluate(TransactionContext transactionContext) {
         TransactionEvent transaction = transactionContext.transaction();
 
@@ -47,7 +47,7 @@ public final class ForeignCountryRule implements FraudRule {
         String normalizedCountry = transactionCountry.trim().toUpperCase(Locale.ROOT);
 
         if (transaction.amount().compareTo(minimumAmount) < 0
-            || normalizedCountry.equals(homeCountryCode)) {
+                || normalizedCountry.equals(homeCountryCode)) {
             return RuleResult.pass(ruleName());
         }
 
@@ -55,7 +55,11 @@ public final class ForeignCountryRule implements FraudRule {
                 ruleName(),
                 Severity.MEDIUM,
                 "rule=%s | expected=%s | actual=%s | amount=%s"
-                        .formatted(ruleName(), homeCountryCode, normalizedCountry, transaction.amount()));
+                        .formatted(
+                                ruleName(),
+                                homeCountryCode,
+                                normalizedCountry,
+                                transaction.amount()));
     }
 
     @Override

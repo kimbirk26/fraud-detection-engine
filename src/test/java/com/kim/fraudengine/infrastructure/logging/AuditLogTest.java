@@ -17,16 +17,15 @@ class AuditLogTest {
 
         String line = AuditLog.formatAuditLine("ALERT_VIEWED", details);
 
-        assertThat(line).contains("event=ALERT_VIEWED");
-        assertThat(line).contains("requestedBy=cu***12");
-        assertThat(line).contains("path=/api/v1/alerts/{id}");
-        assertThat(line).doesNotContain("requestedBy=customer_ab12");
-        assertThat(line).doesNotContain("path=/api/v1/alerts/customer_ab12");
+        assertThat(line).contains("event=ALERT_VIEWED")
+                .contains("requestedBy=cu***12")
+                .contains("path=/api/v1/alerts/{id}")
+                .doesNotContain("requestedBy=customer_ab12")
+                .doesNotContain("path=/api/v1/alerts/customer_ab12");
     }
 
     @Test
     void formatAuditLineHandlesNullDetails() {
-        assertThat(AuditLog.formatAuditLine("ALERT_VIEWED", null))
-                .isEqualTo("event=ALERT_VIEWED");
+        assertThat(AuditLog.formatAuditLine("ALERT_VIEWED", null)).isEqualTo("event=ALERT_VIEWED");
     }
 }

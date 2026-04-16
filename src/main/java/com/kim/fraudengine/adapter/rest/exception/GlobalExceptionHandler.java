@@ -1,7 +1,12 @@
 package com.kim.fraudengine.adapter.rest.exception;
 
 import com.kim.fraudengine.adapter.rest.dto.ErrorResponse;
+import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -16,16 +21,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-
-@SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-        justification = "All exception messages pass through SensitiveLogValueSanitizer.normalizeForLog() " +
-                        "which strips control characters; SpotBugs does not recognise custom sanitizers as taint-cleaners")
+@SuppressFBWarnings(
+        value = "CRLF_INJECTION_LOGS",
+        justification =
+                "All exception messages pass through SensitiveLogValueSanitizer.normalizeForLog() "
+                        + "which strips control characters; SpotBugs does not recognise custom sanitizers as taint-cleaners")
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -34,7 +34,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlertNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleAlertNotFound(AlertNotFoundException ex) {
         String traceId = newTraceId();
-        log.info("Alert not found [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+        log.info(
+                "Alert not found [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ErrorResponse.of(404, "Not Found", ex.getMessage(), traceId));
@@ -43,76 +46,92 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidFilterException.class)
     public ResponseEntity<ErrorResponse> handleInvalidFilter(InvalidFilterException ex) {
         String traceId = newTraceId();
-        log.info("Invalid filter [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+        log.info(
+                "Invalid filter [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(400, "Bad Request", ex.getMessage(), traceId));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponse> handleValidationErrors(
+            MethodArgumentNotValidException ex) {
         String traceId = newTraceId();
 
-        List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(fe -> new ErrorResponse.FieldError(fe.getField(), fieldMessage(fe)))
-                .toList();
+        List<ErrorResponse.FieldError> fieldErrors =
+                ex.getBindingResult().getFieldErrors().stream()
+                        .map(fe -> new ErrorResponse.FieldError(fe.getField(), fieldMessage(fe)))
+                        .toList();
 
-        log.info("Validation failed [traceId={}]: {} field errors", traceId, fieldErrors.size()); // fieldErrors.size() is an int - safe
+        log.info(
+                "Validation failed [traceId={}]: {} field errors",
+                traceId,
+                fieldErrors.size()); // fieldErrors.size() is an int - safe
 
-        return ResponseEntity.badRequest()
-                .body(ErrorResponse.validation(traceId, fieldErrors));
+        return ResponseEntity.badRequest().body(ErrorResponse.validation(traceId, fieldErrors));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex) {
         String traceId = newTraceId();
 
-        List<ErrorResponse.FieldError> fieldErrors = ex.getConstraintViolations()
-                .stream()
-                .map(cv -> {
-                    String path = cv.getPropertyPath().toString();
-                    String field = path.contains(".")
-                            ? path.substring(path.lastIndexOf('.') + 1)
-                            : path;
-                    return new ErrorResponse.FieldError(field, cv.getMessage());
-                })
-                .toList();
+        List<ErrorResponse.FieldError> fieldErrors =
+                ex.getConstraintViolations().stream()
+                        .map(
+                                cv -> {
+                                    String path = cv.getPropertyPath().toString();
+                                    String field =
+                                            path.contains(".")
+                                                    ? path.substring(path.lastIndexOf('.') + 1)
+                                                    : path;
+                                    return new ErrorResponse.FieldError(field, cv.getMessage());
+                                })
+                        .toList();
 
-        log.info("Constraint violation [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+        log.info(
+                "Constraint violation [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
-        return ResponseEntity.badRequest()
-                .body(ErrorResponse.validation(traceId, fieldErrors));
+        return ResponseEntity.badRequest().body(ErrorResponse.validation(traceId, fieldErrors));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ErrorResponse> handleUnreadableMessage(
+            HttpMessageNotReadableException ex) {
         String traceId = newTraceId();
 
         String safeMessage = extractSafeMessage(ex);
 
-        log.info("Unreadable request body [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+        log.info(
+                "Unreadable request body [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(400, "Bad Request", safeMessage, traceId));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
         String traceId = newTraceId();
         Class<?> requiredType = ex.getRequiredType();
 
-        String message = String.format(
-                "Invalid value '%s' for parameter '%s'%s.",
-                ex.getValue(),
-                ex.getName(),
-                requiredType != null
-                        ? " — expected " + requiredType.getSimpleName()
-                        : ""
-        );
+        String message =
+                String.format(
+                        "Invalid value '%s' for parameter '%s'%s.",
+                        ex.getValue(),
+                        ex.getName(),
+                        requiredType != null ? " — expected " + requiredType.getSimpleName() : "");
 
-        log.info("Type mismatch [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(message));
+        log.info(
+                "Type mismatch [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(message));
 
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(400, "Bad Request", message, traceId));
@@ -122,7 +141,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex) {
         String traceId = newTraceId();
 
-        log.warn("Access denied [traceId={}]: {}", traceId, SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+        log.warn(
+                "Access denied [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of(403, "Forbidden", "Access is denied.", traceId));
@@ -135,12 +157,12 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error [traceId={}]", traceId, ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ErrorResponse.of(
-                        500,
-                        "Internal Server Error",
-                        "An unexpected error occurred. Reference: " + traceId,
-                        traceId
-                ));
+                .body(
+                        ErrorResponse.of(
+                                500,
+                                "Internal Server Error",
+                                "An unexpected error occurred. Reference: " + traceId,
+                                traceId));
     }
 
     private String newTraceId() {

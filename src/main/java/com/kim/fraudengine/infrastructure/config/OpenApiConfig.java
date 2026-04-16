@@ -16,22 +16,28 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
-                .info(new Info()
-                        .title("Fraud Detection Engine API")
-                        .description("""
+                .info(
+                        new Info()
+                                .title("Fraud Detection Engine API")
+                                .description(
+                                        """
                                 Real-time transaction fraud detection service.
 
                                 All endpoints except `POST /api/v1/auth/token` require a Bearer JWT \
                                 in the `Authorization` header. Obtain a token first, then click \
                                 **Authorize** and paste it in.
                                 """)
-                        .version("1.0.0"))
+                                .version("1.0.0"))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))
-                .components(new Components()
-                        .addSecuritySchemes(BEARER_SCHEME, new SecurityScheme()
-                                .type(SecurityScheme.Type.HTTP)
-                                .scheme("bearer")
-                                .bearerFormat("JWT")
-                                .description("JWT obtained from POST /api/v1/auth/token")));
+                .components(
+                        new Components()
+                                .addSecuritySchemes(
+                                        BEARER_SCHEME,
+                                        new SecurityScheme()
+                                                .type(SecurityScheme.Type.HTTP)
+                                                .scheme("bearer")
+                                                .bearerFormat("JWT")
+                                                .description(
+                                                        "JWT obtained from POST /api/v1/auth/token")));
     }
 }

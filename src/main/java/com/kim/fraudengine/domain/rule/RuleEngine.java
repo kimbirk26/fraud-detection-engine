@@ -2,7 +2,6 @@ package com.kim.fraudengine.domain.rule;
 
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.TransactionContext;
-
 import java.util.List;
 
 public class RuleEngine {
@@ -14,6 +13,9 @@ public class RuleEngine {
     }
 
     public List<RuleResult> evaluate(TransactionContext context) {
-        return rules.stream().map(rule -> rule.evaluate(context)).filter(RuleResult::triggered).toList();
+        return rules.stream()
+                .map(rule -> rule.evaluate(context))
+                .filter(RuleResult::triggered)
+                .toList();
     }
 }

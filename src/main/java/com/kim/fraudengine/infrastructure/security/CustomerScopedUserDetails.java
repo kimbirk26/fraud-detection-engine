@@ -1,34 +1,34 @@
 package com.kim.fraudengine.infrastructure.security;
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-
 import java.io.Serial;
 import java.util.Collection;
 import java.util.Objects;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 
 public class CustomerScopedUserDetails extends User implements CustomerScopedPrincipal {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Serial private static final long serialVersionUID = 1L;
 
     private final String customerId;
 
-    public CustomerScopedUserDetails(String username,
-                                     String password,
-                                     Collection<? extends GrantedAuthority> authorities,
-                                     String customerId) {
+    public CustomerScopedUserDetails(
+            String username,
+            String password,
+            Collection<? extends GrantedAuthority> authorities,
+            String customerId) {
         this(username, password, true, true, true, true, authorities, customerId);
     }
 
-    public CustomerScopedUserDetails(String username,
-                                     String password,
-                                     boolean enabled,
-                                     boolean accountNonExpired,
-                                     boolean credentialsNonExpired,
-                                     boolean accountNonLocked,
-                                     Collection<? extends GrantedAuthority> authorities,
-                                     String customerId) {
+    public CustomerScopedUserDetails(
+            String username,
+            String password,
+            boolean enabled,
+            boolean accountNonExpired,
+            boolean credentialsNonExpired,
+            boolean accountNonLocked,
+            Collection<? extends GrantedAuthority> authorities,
+            String customerId) {
         super(
                 username,
                 password,

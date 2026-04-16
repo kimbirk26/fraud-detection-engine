@@ -12,16 +12,12 @@ public record AlertResponse(
         List<RuleResultResponse> triggeredRules,
         SeverityResponse highestSeverity,
         AlertStatusResponse status,
-        Instant createdAt
-) {
+        Instant createdAt) {
     public AlertResponse {
-        triggeredRules = List.copyOf(Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
+        triggeredRules =
+                List.copyOf(
+                        Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
     }
 
-    public record RuleResultResponse(
-            String ruleName,
-            SeverityResponse severity,
-            String reason
-    ) {
-    }
+    public record RuleResultResponse(String ruleName, SeverityResponse severity, String reason) {}
 }

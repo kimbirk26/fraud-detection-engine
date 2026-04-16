@@ -9,14 +9,13 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -24,7 +23,9 @@ import java.util.UUID;
 @Table(
         name = "fraud_alerts",
         uniqueConstraints =
-        @UniqueConstraint(name = "uk_fraud_alerts_transaction_id", columnNames = "transaction_id"))
+                @UniqueConstraint(
+                        name = "uk_fraud_alerts_transaction_id",
+                        columnNames = "transaction_id"))
 public class AlertEntity {
 
     @Id
@@ -68,5 +69,4 @@ public class AlertEntity {
         this.status = status;
         this.createdAt = createdAt;
     }
-
 }

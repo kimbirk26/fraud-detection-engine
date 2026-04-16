@@ -1,5 +1,14 @@
 package com.kim.fraudengine.infrastructure.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,21 +19,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class JdbcCustomerScopedUserDetailsServiceTest {
 
-    @Mock
-    private JdbcTemplate jdbcTemplate;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     private JdbcCustomerScopedUserDetailsService service;
 
@@ -36,14 +34,16 @@ class JdbcCustomerScopedUserDetailsServiceTest {
     @Test
     void loadUserByUsername_returnsCustomerScopedUser() {
         when(jdbcTemplate.queryForList(anyString(), eq("customer_cust001")))
-                .thenReturn(List.of(Map.of(
-                        "username", "customer_cust001",
-                        "password_hash", "{argon2}encoded",
-                        "customer_id", "CUST001",
-                        "enabled", true,
-                        "account_non_locked", true,
-                        "account_non_expired", true,
-                        "credentials_non_expired", true)));
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "username", "customer_cust001",
+                                        "password_hash", "{argon2}encoded",
+                                        "customer_id", "CUST001",
+                                        "enabled", true,
+                                        "account_non_locked", true,
+                                        "account_non_expired", true,
+                                        "credentials_non_expired", true)));
         when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("customer_cust001")))
                 .thenReturn(List.of("alerts:read"));
 
@@ -59,8 +59,7 @@ class JdbcCustomerScopedUserDetailsServiceTest {
 
     @Test
     void loadUserByUsername_throwsWhenUserMissing() {
-        when(jdbcTemplate.queryForList(anyString(), eq("missing-user")))
-                .thenReturn(List.of());
+        when(jdbcTemplate.queryForList(anyString(), eq("missing-user"))).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.loadUserByUsername("missing-user"))
                 .isInstanceOf(UsernameNotFoundException.class)
@@ -69,13 +68,13 @@ class JdbcCustomerScopedUserDetailsServiceTest {
 
     @Test
     void updatePassword_persistsHashAndReturnsUpdatedDetails() {
-        UserDetails existingUser = new CustomerScopedUserDetails(
-                "analyst",
-                "{argon2}old",
-                List.of(new SimpleGrantedAuthority("alerts:read:all")),
-                null);
-        when(jdbcTemplate.update(anyString(), eq("{argon2}new"), eq("analyst")))
-                .thenReturn(1);
+        UserDetails existingUser =
+                new CustomerScopedUserDetails(
+                        "analyst",
+                        "{argon2}old",
+                        List.of(new SimpleGrantedAuthority("alerts:read:all")),
+                        null);
+        when(jdbcTemplate.update(anyString(), eq("{argon2}new"), eq("analyst"))).thenReturn(1);
 
         UserDetails updated = service.updatePassword(existingUser, "{argon2}new");
 

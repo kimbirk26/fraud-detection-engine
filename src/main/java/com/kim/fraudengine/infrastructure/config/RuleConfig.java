@@ -6,14 +6,13 @@ import com.kim.fraudengine.domain.rule.ForeignCountryRule;
 import com.kim.fraudengine.domain.rule.OutOfHoursRule;
 import com.kim.fraudengine.domain.rule.RuleEngine;
 import com.kim.fraudengine.domain.rule.VelocityRule;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
 import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 /**
  * Wires fraud rules from application.yml into the RuleEngine. Adding a new rule = one new @Bean
@@ -66,6 +65,11 @@ public class RuleConfig {
             VelocityRule velocityRule) {
 
         return new RuleEngine(
-                List.of(amountRule, blacklistRule, outOfHoursRule, foreignCountryRule, velocityRule));
+                List.of(
+                        amountRule,
+                        blacklistRule,
+                        outOfHoursRule,
+                        foreignCountryRule,
+                        velocityRule));
     }
 }
