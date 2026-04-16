@@ -8,6 +8,7 @@ import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.inbound.GetAlertsUseCase;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
+import com.kim.fraudengine.domain.port.inbound.UpdateAlertStatusUseCase;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
 import com.kim.fraudengine.domain.rule.RuleEngine;
@@ -31,7 +32,7 @@ import java.util.UUID;
  * that touches both ports and domain objects.
  */
 @Service
-public final class FraudDetectionService implements ProcessTransactionUseCase, GetAlertsUseCase {
+public final class FraudDetectionService implements ProcessTransactionUseCase, GetAlertsUseCase, UpdateAlertStatusUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(FraudDetectionService.class);
 
@@ -61,10 +62,10 @@ public final class FraudDetectionService implements ProcessTransactionUseCase, G
     @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
             justification = "UUIDs, enums, and internal rule name constants cannot contain CRLF characters")
     public Optional<FraudAlert> process(TransactionEvent transactionEvent) {
-        log.info(
-                "Evaluating transaction {} for customer {}",
-                transactionEvent.id(),
-                SensitiveLogValueSanitizer.normalizeForLog(transactionEvent.customerId()));
+        log.atInfo()
+                .addArgument(transactionEvent::id)
+                .addArgument(() -> SensitiveLogValueSanitizer.normalizeForLog(transactionEvent.customerId()))
+                .log("Evaluating transaction {} for customer {}");
         try {
             Optional<FraudAlert> result =
                     transactionOperations.execute(status -> processInTransaction(transactionEvent));
@@ -167,5 +168,17 @@ public final class FraudDetectionService implements ProcessTransactionUseCase, G
     @Override
     public Optional<FraudAlert> getById(UUID id) {
         return alertRepository.findById(id);
+    }
+
+    @Override
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
+            justification = "UUIDs and enums cannot contain CRLF characters")
+    public Optional<FraudAlert> updateStatus(UUID alertId, AlertStatus newStatus) {
+        return alertRepository.findById(alertId).map(alert -> {
+            FraudAlert updated = alert.withStatus(newStatus);
+            FraudAlert saved = alertRepository.save(updated);
+            log.info("Alert {} status updated to {}", saved.id(), saved.status());
+            return saved;
+        });
     }
 }

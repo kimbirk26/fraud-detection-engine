@@ -28,6 +28,7 @@ class SecurityConfigCorsTest {
         assertThat(configuration.getAllowedMethods()).containsExactly(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
+                HttpMethod.PATCH.name(),
                 HttpMethod.OPTIONS.name());
         assertThat(configuration.getAllowedHeaders()).containsExactly(
                 "Authorization",

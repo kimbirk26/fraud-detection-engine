@@ -312,6 +312,37 @@ class FraudDetectionServiceTest {
                 Instant.parse("2024-01-01T10:00:00Z"));
     }
 
+    @Test
+    void shouldUpdateAlertStatus_whenAlertExists() {
+        FraudAlert alert = FraudAlert.from(
+                transaction(),
+                List.of(RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold")));
+
+        when(alertRepository.findById(alert.id())).thenReturn(Optional.of(alert));
+        when(alertRepository.save(any(FraudAlert.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<FraudAlert> result = service.updateStatus(alert.id(), AlertStatus.UNDER_REVIEW);
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().status()).isEqualTo(AlertStatus.UNDER_REVIEW);
+        assertThat(result.orElseThrow().id()).isEqualTo(alert.id());
+
+        ArgumentCaptor<FraudAlert> captor = ArgumentCaptor.forClass(FraudAlert.class);
+        verify(alertRepository).save(captor.capture());
+        assertThat(captor.getValue().status()).isEqualTo(AlertStatus.UNDER_REVIEW);
+    }
+
+    @Test
+    void shouldReturnEmpty_whenAlertNotFoundForStatusUpdate() {
+        UUID unknownId = UUID.randomUUID();
+        when(alertRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        Optional<FraudAlert> result = service.updateStatus(unknownId, AlertStatus.RESOLVED);
+
+        assertThat(result).isEmpty();
+        verify(alertRepository, never()).save(any());
+    }
+
     private TransactionEvent secondTransaction() {
         return new TransactionEvent(
                 UUID.fromString("22222222-2222-2222-2222-222222222222"),
