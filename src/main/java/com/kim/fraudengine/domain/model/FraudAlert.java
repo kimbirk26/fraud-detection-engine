@@ -18,8 +18,9 @@ public record FraudAlert(
         triggeredRules = List.copyOf(Objects.requireNonNull(triggeredRules, "triggeredRules must not be null"));
     }
 
-    public FraudAlert withStatus(AlertStatus newStatus) {
-        return new FraudAlert(id, transactionId, customerId, triggeredRules, highestSeverity, newStatus, createdAt);
+    @Override
+    public List<RuleResult> triggeredRules() {
+        return List.copyOf(triggeredRules);
     }
 
     public static FraudAlert from(TransactionEvent transactionEvent, List<RuleResult> triggered) {
