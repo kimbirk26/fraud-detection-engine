@@ -29,14 +29,14 @@ public final class AmountThresholdRule implements FraudRule {
             return RuleResult.flag(
                     RULE_NAME,
                     Severity.HIGH,
-                    String.format("Amount %s exceeds high threshold %s", amount, highThreshold));
+                    "Amount %s exceeds high threshold %s".formatted(amount, highThreshold));
         }
 
         if (isAbove(amount, mediumThreshold)) {
             return RuleResult.flag(
                     RULE_NAME,
                     Severity.MEDIUM,
-                    String.format("Amount %s exceeds medium threshold %s", amount, mediumThreshold));
+                    "Amount %s exceeds medium threshold %s".formatted(amount, mediumThreshold));
         }
 
         return RuleResult.pass(RULE_NAME);

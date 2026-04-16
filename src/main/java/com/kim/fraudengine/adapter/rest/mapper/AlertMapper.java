@@ -22,7 +22,7 @@ public final class AlertMapper {
     }
 
     private static RuleResultResponse toRuleResponse(RuleResult rule) {
-        return new RuleResultResponse(rule.ruleName(), toSeverityResponse(rule.severity()), rule.reason());
+        return new RuleResultResponse(rule.ruleName(), toResponse(rule.severity()), rule.reason());
     }
 
     private static SeverityResponse toResponse(Severity severity) {
@@ -40,15 +40,6 @@ public final class AlertMapper {
             case UNDER_REVIEW -> AlertStatusResponse.UNDER_REVIEW;
             case RESOLVED -> AlertStatusResponse.RESOLVED;
             case FALSE_POSITIVE -> AlertStatusResponse.FALSE_POSITIVE;
-        };
-    }
-
-    private static SeverityResponse toSeverityResponse(Severity severity) {
-        return switch (severity) {
-            case NONE -> SeverityResponse.NONE;
-            case LOW -> SeverityResponse.LOW;
-            case MEDIUM -> SeverityResponse.MEDIUM;
-            case HIGH -> SeverityResponse.HIGH;
         };
     }
 }
