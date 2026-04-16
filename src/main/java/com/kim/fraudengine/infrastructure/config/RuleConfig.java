@@ -17,7 +17,7 @@ import java.util.Set;
 
 /**
  * Wires fraud rules from application.yml into the RuleEngine. Adding a new rule = one new @Bean
- * here. Nothing else changes.
+ * here. Nothing else changes. Open/Closed Principle
  */
 @Configuration
 public class RuleConfig {

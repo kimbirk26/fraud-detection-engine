@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * Flags transactions involving known fraudulent merchants.
  */
-public class BlacklistRule implements FraudRule {
+public final class BlacklistRule implements FraudRule {
 
     private static final String RULE_NAME = "BLACKLIST_MATCH";
 
