@@ -1,12 +1,15 @@
 package com.kim.fraudengine.adapter.rest;
 
 import com.kim.fraudengine.adapter.rest.dto.AlertResponse;
+import com.kim.fraudengine.adapter.rest.dto.UpdateAlertStatusRequest;
 import com.kim.fraudengine.adapter.rest.exception.AlertNotFoundException;
 import com.kim.fraudengine.adapter.rest.exception.InvalidFilterException;
 import com.kim.fraudengine.adapter.rest.mapper.AlertMapper;
 import com.kim.fraudengine.domain.model.AlertStatus;
+import com.kim.fraudengine.domain.model.FraudAlert;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.port.inbound.GetAlertsUseCase;
+import com.kim.fraudengine.domain.port.inbound.UpdateAlertStatusUseCase;
 import com.kim.fraudengine.infrastructure.logging.AuditLog;
 import com.kim.fraudengine.infrastructure.security.CustomerAccessEvaluator;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -16,10 +19,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,18 +35,23 @@ import java.util.List;
 import java.util.UUID;
 
 
-@Tag(name = "Alerts", description = "Query fraud alerts. Requires authority: alerts:read (own) or alerts:read:all (global)")
+@Tag(name = "Alerts", description = "Query and manage fraud alerts. Requires authority: alerts:read (own) or alerts:read:all (global)")
 @RestController
 @RequestMapping("/api/v1/alerts")
 public class AlertController {
 
+    private static final String RESULT_COUNT = "resultCount";
+
     private final GetAlertsUseCase getAlertsUseCase;
+    private final UpdateAlertStatusUseCase updateAlertStatusUseCase;
     private final CustomerAccessEvaluator customerAccessEvaluator;
 
     public AlertController(
             GetAlertsUseCase getAlertsUseCase,
+            UpdateAlertStatusUseCase updateAlertStatusUseCase,
             CustomerAccessEvaluator customerAccessEvaluator) {
         this.getAlertsUseCase = getAlertsUseCase;
+        this.updateAlertStatusUseCase = updateAlertStatusUseCase;
         this.customerAccessEvaluator = customerAccessEvaluator;
     }
 
@@ -69,6 +80,32 @@ public class AlertController {
     }
 
     @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
+    @Operation(summary = "Update alert status",
+               description = "Updates the status of an alert. Requires alerts:write authority.")
+    @ApiResponse(responseCode = "200", description = "Status updated",
+                 content = @Content(schema = @Schema(implementation = AlertResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Invalid request body")
+    @ApiResponse(responseCode = "404", description = "Alert not found")
+    @PreAuthorize("hasAuthority('alerts:write')")
+    @PatchMapping("/{id}/status")
+    public AlertResponse updateStatus(@PathVariable UUID id,
+                                      @Valid @RequestBody UpdateAlertStatusRequest request,
+                                      Authentication authentication) {
+        AlertStatus previousStatus = getAlertsUseCase.getById(id)
+                .map(FraudAlert::status)
+                .orElseThrow(() -> new AlertNotFoundException(id));
+        AlertResponse response = updateAlertStatusUseCase.updateStatus(id, request.status())
+                .map(AlertMapper::toResponse)
+                .orElseThrow(() -> new AlertNotFoundException(id));
+        AuditLog.record("ALERT_STATUS_UPDATED", auditDetails(authentication, id)
+                .append("previousStatus", previousStatus.name())
+                .append("newStatus", request.status().name())
+                .append("customerId", response.customerId())
+                .build());
+        return response;
+    }
+
+    @SuppressFBWarnings(value = "SPRING_ENDPOINT", justification = "Intentional secured REST endpoint")
     @Operation(summary = "Get alerts by customer ID",
                description = "Returns all alerts for the given customer. Access restricted to the customer's own account, or users with alerts:read:all.")
     @ApiResponse(responseCode = "200", description = "Alerts returned (may be empty)")
@@ -82,7 +119,7 @@ public class AlertController {
                 .toList();
         AuditLog.record("ALERT_LIST_VIEWED", auditDetails(authentication, null)
                 .append("requestedCustomerId", customerId)
-                .append("resultCount", alerts.size())
+                .append(RESULT_COUNT, alerts.size())
                 .build());
         return alerts;
     }
@@ -107,7 +144,7 @@ public class AlertController {
             AuditLog.record("ALERT_FILTER_VIEWED", auditDetails(authentication, null)
                     .append("filterType", "status")
                     .append("filterValue", status.name())
-                    .append("resultCount", alerts.size())
+                    .append(RESULT_COUNT, alerts.size())
                     .build());
             return alerts;
         }
@@ -119,7 +156,7 @@ public class AlertController {
             AuditLog.record("ALERT_FILTER_VIEWED", auditDetails(authentication, null)
                     .append("filterType", "severity")
                     .append("filterValue", severity.name())
-                    .append("resultCount", alerts.size())
+                    .append(RESULT_COUNT, alerts.size())
                     .build());
             return alerts;
         }

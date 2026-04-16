@@ -16,7 +16,7 @@ import com.kim.fraudengine.infrastructure.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -47,19 +47,19 @@ class TransactionControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     ProcessTransactionUseCase processTransactionUseCase;
 
-    @MockBean
+    @MockitoBean
     TransactionEventPublisher eventPublisher;
 
-    @MockBean
+    @MockitoBean
     TransactionMapper transactionMapper;
 
-    @MockBean
+    @MockitoBean
     JwtService jwtService;
 
-    @MockBean
+    @MockitoBean
     UserDetailsService userDetailsService;
 
     private static final UUID TRANSACTION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

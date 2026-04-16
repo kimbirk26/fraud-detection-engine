@@ -3,10 +3,10 @@ package com.kim.fraudengine.infrastructure.config;
 import com.kim.fraudengine.infrastructure.logging.RequestCorrelationFilter;
 import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import com.kim.fraudengine.infrastructure.security.AuthRateLimitFilter;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.kim.fraudengine.infrastructure.security.AuthRateLimitProperties;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
@@ -129,7 +130,7 @@ public class SecurityConfig {
                 // Safe here because this API is stateless and uses Bearer JWTs in the
                 // Authorization header only. We do not use sessions, form login,
                 // HTTP Basic, remember-me, or cookie-based authentication.
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -143,9 +144,9 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
-                .httpBasic(httpBasic -> httpBasic.disable())
-                .formLogin(form -> form.disable())
-                .logout(logout -> logout.disable())
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -195,6 +196,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
+                HttpMethod.PATCH.name(),
                 HttpMethod.OPTIONS.name()));
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
