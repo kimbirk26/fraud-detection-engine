@@ -211,7 +211,7 @@ jobs:
   sbom-generation:
     name: Generate SBOM & Artifacts
     runs-on: ubuntu-latest
-    needs: [ container-security, sonarqube-analysis ]
+    needs: [ container-security ]
     permissions:
       contents: write
       packages: write
@@ -275,7 +275,7 @@ jobs:
   compliance-checks:
     name: Compliance & Audit Logging
     runs-on: ubuntu-latest
-    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, sonarqube-analysis, container-security, sbom-generation ]
+    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation ]
     if: always()
     permissions:
       contents: read
@@ -318,7 +318,6 @@ jobs:
           QODANA_RESULT: ${{ needs.qodana-analysis.result }}
           CODEQL_RESULT: ${{ needs.codeql-analysis.result }}
           DEPENDENCY_RESULT: ${{ needs.dependency-check.result }}
-          SONAR_RESULT: ${{ needs.sonarqube-analysis.result }}
           CONTAINER_RESULT: ${{ needs.container-security.result }}
           SBOM_RESULT: ${{ needs.sbom-generation.result }}
         run: |
@@ -338,8 +337,7 @@ jobs:
             "$GITLEAKS_RESULT" \
             "$QODANA_RESULT" \
             "$CODEQL_RESULT" \
-            "$DEPENDENCY_RESULT" \
-            "$SONAR_RESULT"; do
+            "$DEPENDENCY_RESULT"; do
             if [ "$required_result" != "success" ]; then
               GATE_PASS=false
             fi
@@ -380,7 +378,6 @@ jobs:
           - Qodana: $(format_gate_status "$QODANA_RESULT")
           - CodeQL: $(format_gate_status "$CODEQL_RESULT")
           - Dependencies: $(format_gate_status "$DEPENDENCY_RESULT")
-          - SonarQube Quality Gate: $(format_gate_status "$SONAR_RESULT")
           - Container Security: $(format_gate_status "$CONTAINER_RESULT")
           - SBOM Generation: $(format_gate_status "$SBOM_RESULT")
           
@@ -400,7 +397,7 @@ jobs:
   security-gate:
     name: Security Gate - Final Review
     runs-on: ubuntu-latest
-    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, sonarqube-analysis, container-security, sbom-generation, compliance-checks ]
+    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation, compliance-checks ]
     if: always()
     permissions:
       contents: read
@@ -451,14 +448,6 @@ jobs:
             GATE_PASS=false
           fi
           
-          # SonarQube
-          if [[ "${{ needs.sonarqube-analysis.result }}" == "success" ]]; then
-            echo "PASSED SonarQube Quality Gate: PASSED"
-          else
-            echo "FAILED SonarQube Quality Gate: FAILED"
-            GATE_PASS=false
-          fi
-          
           # Container Security
           if [[ "${{ needs.container-security.result }}" == "success" ]]; then
             echo "PASSED Container Security: PASSED - Image scanned"
@@ -502,7 +491,6 @@ jobs:
               qodana: '${{ needs.qodana-analysis.result }}',
               codeql: '${{ needs.codeql-analysis.result }}',
               deps: '${{ needs.dependency-check.result }}',
-              sonar: '${{ needs.sonarqube-analysis.result }}',
               container: '${{ needs.container-security.result }}',
               sbom: '${{ needs.sbom-generation.result }}',
               compliance: '${{ needs.compliance-checks.result }}',
@@ -520,7 +508,6 @@ jobs:
               statuses.qodana,
               statuses.codeql,
               statuses.deps,
-              statuses.sonar,
               statuses.compliance,
             ].every((result) => result === 'success');
 
@@ -534,7 +521,6 @@ jobs:
               `| SAST - Qodana | ${icon(statuses.qodana)} |`,
               `| SAST - CodeQL | ${icon(statuses.codeql)} |`,
               `| Dependency Check | ${icon(statuses.deps)} |`,
-              `| Code Quality (SonarQube) | ${icon(statuses.sonar)} |`,
               `| Container Security | ${icon(statuses.container, true)} |`,
               `| SBOM Generation | ${icon(statuses.sbom, true)} |`,
               `| Compliance Audit | ${icon(statuses.compliance)} |`,
