@@ -8,6 +8,7 @@ import com.kim.fraudengine.infrastructure.security.InternalAuthenticationRunner;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -26,6 +27,7 @@ import java.util.List;
                 "alert.id() is a UUID and highestSeverity() is an enum - neither can contain CRLF; "
                 + "SpotBugs cannot see through the ifPresent lambda to the method-level suppression")
 @Component
+@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class TransactionEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(TransactionEventConsumer.class);

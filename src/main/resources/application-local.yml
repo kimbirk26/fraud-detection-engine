@@ -4,6 +4,8 @@ spring:
       on-profile: local
 
 app:
+  kafka:
+    enabled: "${APP_KAFKA_ENABLED:false}"
   jwt:
     # Local-only signing key to make the profile self-contained. Never enable this profile in prod.
     secret: ${LOCAL_JWT_SECRET:fraud-engine-local-profile-jwt-secret-32}
