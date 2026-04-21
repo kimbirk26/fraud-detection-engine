@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public record TransactionRequest(
@@ -15,7 +16,8 @@ public record TransactionRequest(
         @NotBlank String merchantName,
         @NotNull TransactionCategoryResponse category,
         @NotBlank @Size(min = 3, max = 3) String currency,
-        @NotBlank @Size(min = 2, max = 2) String countryCode) {
+        @NotBlank @Size(min = 2, max = 2) String countryCode,
+        Instant transactionTime) {
 
     public enum TransactionCategoryResponse {
         GROCERIES,

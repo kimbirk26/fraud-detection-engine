@@ -67,7 +67,8 @@ class TransactionControllerTest {
                 "Test Merchant",
                 TransactionRequest.TransactionCategoryResponse.GROCERIES,
                 "ZAR",
-                "ZA");
+                "ZA",
+                null);
     }
 
     private TransactionEvent sampleEvent() {

@@ -16,6 +16,7 @@ public class TransactionMapper {
                 request.merchantName(),
                 CategoryMapper.toDomain(request.category()),
                 request.currency(),
-                request.countryCode());
+                request.countryCode(),
+                request.transactionTime());
     }
 }
