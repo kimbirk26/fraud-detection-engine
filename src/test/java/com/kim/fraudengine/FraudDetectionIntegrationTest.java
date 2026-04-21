@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.adapter.rest.dto.TransactionRequest;
 import com.kim.fraudengine.adapter.rest.dto.TransactionRequest.TransactionCategoryResponse;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
     @Test
     @WithMockUser(authorities = "transactions:write")
     void cleanTransaction_returns204() throws Exception {
+        // Pin to noon UTC so the OutOfHoursRule (00:00–05:00 SAST) never fires in CI.
         TransactionRequest request =
                 new TransactionRequest(
                         UUID.randomUUID(),
@@ -45,7 +47,8 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                         "Safe Merchant",
                         TransactionCategoryResponse.GROCERIES,
                         "ZAR",
-                        "ZA");
+                        "ZA",
+                        Instant.parse("2024-01-15T12:00:00Z"));
 
         mockMvc.perform(
                         post(SYNC_URL)
@@ -70,7 +73,8 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                         "Fraudulent Merchant",
                         TransactionCategoryResponse.ONLINE_PURCHASE,
                         "ZAR",
-                        "ZA");
+                        "ZA",
+                        null);
 
         mockMvc.perform(
                         post(SYNC_URL)
@@ -99,7 +103,8 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                         "Fraudulent Merchant",
                         TransactionCategoryResponse.ONLINE_PURCHASE,
                         "ZAR",
-                        "ZA");
+                        "ZA",
+                        null);
 
         String body = objectMapper.writeValueAsString(request);
 
@@ -144,7 +149,8 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                         "Fraudulent Merchant 2",
                         TransactionCategoryResponse.ONLINE_PURCHASE,
                         "ZAR",
-                        "ZA");
+                        "ZA",
+                        null);
 
         String alertJson =
                 mockMvc.perform(

@@ -42,6 +42,28 @@ public record TransactionEvent(
             TransactionCategory category,
             String currency,
             String countryCode) {
+        return of(
+                transactionId,
+                customerId,
+                amount,
+                merchantId,
+                merchantName,
+                category,
+                currency,
+                countryCode,
+                null);
+    }
+
+    public static TransactionEvent of(
+            UUID transactionId,
+            String customerId,
+            BigDecimal amount,
+            String merchantId,
+            String merchantName,
+            TransactionCategory category,
+            String currency,
+            String countryCode,
+            Instant timestamp) {
         return new TransactionEvent(
                 transactionId != null ? transactionId : UUID.randomUUID(),
                 customerId,
@@ -51,7 +73,7 @@ public record TransactionEvent(
                 category,
                 currency,
                 countryCode,
-                Instant.now());
+                timestamp != null ? timestamp : Instant.now());
     }
 
     public TransactionEvent withAmount(BigDecimal newAmount) {

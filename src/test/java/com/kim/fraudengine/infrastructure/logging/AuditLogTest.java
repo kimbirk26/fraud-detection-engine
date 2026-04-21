@@ -1,11 +1,10 @@
 package com.kim.fraudengine.infrastructure.logging;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class AuditLogTest {
 
@@ -17,7 +16,8 @@ class AuditLogTest {
 
         String line = AuditLog.formatAuditLine("ALERT_VIEWED", details);
 
-        assertThat(line).contains("event=ALERT_VIEWED")
+        assertThat(line)
+                .contains("event=ALERT_VIEWED")
                 .contains("requestedBy=cu***12")
                 .contains("path=/api/v1/alerts/{id}")
                 .doesNotContain("requestedBy=customer_ab12")
