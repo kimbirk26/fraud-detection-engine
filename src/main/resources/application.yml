@@ -29,6 +29,7 @@ spring:
 
 app:
   kafka:
+    enabled: ${APP_KAFKA_ENABLED:true}
     topics:
       transactions: ${APP_KAFKA_TOPICS_TRANSACTIONS:transactions.raw}
       transactions-dlt: ${APP_KAFKA_TOPICS_TRANSACTIONS_DLT:transactions.raw.dlt}

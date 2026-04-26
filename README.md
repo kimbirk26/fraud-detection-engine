@@ -6,6 +6,18 @@ context.
 
 ---
 
+## Live Demo
+
+| | URL |
+|---|---|
+| **UI** | [https://your-ui-url.vercel.app](https://your-ui-url.vercel.app) |
+| **API** | [https://your-api-url.up.railway.app](https://your-api-url.up.railway.app) |
+| **Swagger** | [https://your-api-url.up.railway.app/swagger-ui.html](https://your-api-url.up.railway.app/swagger-ui.html) |
+
+> Demo credentials: `analyst` / `analyst_pass`
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
