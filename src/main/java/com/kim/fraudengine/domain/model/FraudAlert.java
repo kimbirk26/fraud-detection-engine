@@ -29,6 +29,8 @@ public record FraudAlert(
                 highestSeverity,
                 newStatus,
                 createdAt);
+    }
+
     @Override
     public List<RuleResult> triggeredRules() {
         return List.copyOf(triggeredRules);
