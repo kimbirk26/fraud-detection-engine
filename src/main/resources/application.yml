@@ -88,3 +88,6 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+  health:
+    kafka:
+      enabled: ${APP_KAFKA_ENABLED:true}
