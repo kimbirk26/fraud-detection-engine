@@ -67,7 +67,7 @@ app:
     audience: ${JWT_AUDIENCE}
     expiry-minutes: ${APP_JWT_EXPIRY_MINUTES:60}
   cors:
-    allowed-origins: []
+    allowed-origins: "${APP_CORS_ALLOWED_ORIGINS:}"
   auth:
     bootstrap:
       enabled: false
