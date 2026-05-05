@@ -1,9 +1,8 @@
 package com.kim.fraudengine.infrastructure.logging;
 
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * Structured audit logger for REST-layer access events. Writes to a dedicated logger so audit
@@ -13,8 +12,7 @@ public final class AuditLog {
 
     private static final Logger log = LoggerFactory.getLogger("com.kim.fraud.audit");
 
-    private AuditLog() {
-    }
+    private AuditLog() {}
 
     public static void recordAuditLine(String event, Map<String, Object> details) {
         if (log.isInfoEnabled()) {

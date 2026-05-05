@@ -2,6 +2,9 @@ package com.kim.fraudengine.infrastructure.security;
 
 import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -13,10 +16,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionOperations;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 
 @Component
 @ConditionalOnProperty(prefix = "app.auth.bootstrap", name = "enabled", havingValue = "true")
@@ -95,19 +94,19 @@ public class AuthBootstrapRunner implements ApplicationRunner {
         String passwordHash = resolvePasswordHash(configuredUser, existingUser);
         boolean userChanged =
                 existingUser == null
-                || !Objects.equals(existingUser.customerId(), desiredCustomerId)
-                || existingUser.isEnabled() != configuredUser.enabledFlag()
-                || existingUser.isAccountNonLocked()
-                   != configuredUser.accountNonLockedFlag()
-                || existingUser.isAccountNonExpired()
-                   != configuredUser.accountNonExpiredFlag()
-                || existingUser.isCredentialsNonExpired()
-                   != configuredUser.credentialsNonExpiredFlag()
-                || !Objects.equals(existingUser.getPassword(), passwordHash);
+                        || !Objects.equals(existingUser.customerId(), desiredCustomerId)
+                        || existingUser.isEnabled() != configuredUser.enabledFlag()
+                        || existingUser.isAccountNonLocked()
+                                != configuredUser.accountNonLockedFlag()
+                        || existingUser.isAccountNonExpired()
+                                != configuredUser.accountNonExpiredFlag()
+                        || existingUser.isCredentialsNonExpired()
+                                != configuredUser.credentialsNonExpiredFlag()
+                        || !Objects.equals(existingUser.getPassword(), passwordHash);
         boolean authoritiesChanged =
                 existingUser == null
-                || !sameAuthorities(
-                        existingUser.getAuthorities(), configuredUser.authorities());
+                        || !sameAuthorities(
+                                existingUser.getAuthorities(), configuredUser.authorities());
 
         if (userChanged) {
             jdbcTemplate.update(
@@ -156,7 +155,7 @@ public class AuthBootstrapRunner implements ApplicationRunner {
         }
 
         if (passwordEncoder.matches(configuredUser.password(), existingUser.getPassword())
-            && !passwordEncoder.upgradeEncoding(existingUser.getPassword())) {
+                && !passwordEncoder.upgradeEncoding(existingUser.getPassword())) {
             return existingUser.getPassword();
         }
 

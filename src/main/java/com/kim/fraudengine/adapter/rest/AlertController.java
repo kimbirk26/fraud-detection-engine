@@ -20,6 +20,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,10 +32,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.UUID;
 
 @Tag(
         name = "Alerts",
@@ -167,9 +166,9 @@ public class AlertController {
     @GetMapping
     public List<AlertResponse> getByFilter(
             @Parameter(description = "Filter by alert status") @RequestParam(required = false)
-            AlertStatus status,
+                    AlertStatus status,
             @Parameter(description = "Filter by severity") @RequestParam(required = false)
-            Severity severity,
+                    Severity severity,
             Authentication authentication) {
 
         if (status != null) {
@@ -203,7 +202,7 @@ public class AlertController {
 
         throw new InvalidFilterException(
                 "At least one filter parameter is required: status or severity. "
-                + "Example: GET /api/v1/alerts?status=OPEN");
+                        + "Example: GET /api/v1/alerts?status=OPEN");
     }
 
     private AuditDetailsBuilder auditDetails(Authentication authentication, UUID alertId) {
