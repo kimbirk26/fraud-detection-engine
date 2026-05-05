@@ -10,9 +10,9 @@ context.
 
 | | URL |
 |---|---|
-| **UI** | [https://your-ui-url.vercel.app](https://your-ui-url.vercel.app) |
-| **API** | [https://your-api-url.up.railway.app](https://your-api-url.up.railway.app) |
-| **Swagger** | [https://your-api-url.up.railway.app/swagger-ui.html](https://your-api-url.up.railway.app/swagger-ui.html) |
+| **UI** | [https://fraud-detection-engine-ui.vercel.app](https://fraud-detection-engine-ui.vercel.app) |
+| **API** | [https://fraud-detection-engine-production-2642.up.railway.app/](https://fraud-detection-engine-production-2642.up.railway.app/) |
+| **Swagger** | [https://fraud-detection-engine-production-2642.up.railway.app/swagger-ui.html](https://fraud-detection-engine-production-2642.up.railway.app/swagger-ui.html/) |
 
 > Demo credentials: `analyst` / `analyst_pass`
 
