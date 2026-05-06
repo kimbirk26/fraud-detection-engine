@@ -8,7 +8,6 @@ import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.MigrationAwarePasswordEncoder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -38,14 +37,12 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @SuppressFBWarnings(
-        value = {"SPRING_CSRF_PROTECTION_DISABLED", "CRLF_INJECTION_LOGS"},
+        value = "CRLF_INJECTION_LOGS",
         justification =
-                "SPRING_CSRF_PROTECTION_DISABLED: stateless JWT API — no sessions, cookies, or form login; "
-                        + "CSRF not applicable. Annotation must be at class level because csrf.disable() is called "
-                        + "inside a lambda (synthetic class) not covered by method-level suppression. "
-                        + "CRLF_INJECTION_LOGS: all values pass through SensitiveLogValueSanitizer; "
-                        + "log callbacks are lambdas whose synthetic classes are not covered by method-level suppression")
+                "All logged request-derived values pass through SensitiveLogValueSanitizer before logging")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -193,7 +190,9 @@ public class SecurityConfig {
         return provider;
     }
 
-    /** Exposes AuthenticationManager as a bean so AuthController can inject it. */
+    /**
+     * Exposes AuthenticationManager as a bean so AuthController can inject it.
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
             throws Exception {
