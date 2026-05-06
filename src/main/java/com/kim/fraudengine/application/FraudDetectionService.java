@@ -61,16 +61,13 @@ public final class FraudDetectionService
     @Override
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
-            justification =
-                    "UUIDs, enums, and internal rule name constants cannot contain CRLF characters")
+            justification = "Log messages are assembled only from values normalized by safeLogValue")
     public Optional<FraudAlert> process(TransactionEvent transactionEvent) {
-        log.atInfo()
-                .addArgument(transactionEvent::id)
-                .addArgument(
-                        () ->
-                                SensitiveLogValueSanitizer.normalizeForLog(
-                                        transactionEvent.customerId()))
-                .log("Evaluating transaction {} for customer {}");
+        log.info(
+                "Evaluating transaction "
+                        + safeLogValue(transactionEvent.id())
+                        + " for customer "
+                        + SensitiveLogValueSanitizer.normalizeForLog(transactionEvent.customerId()));
         try {
             Optional<FraudAlert> result =
                     transactionOperations.execute(status -> processInTransaction(transactionEvent));
@@ -82,8 +79,7 @@ public final class FraudDetectionService
 
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
-            justification =
-                    "UUIDs, enums, and internal rule name constants cannot contain CRLF characters")
+            justification = "Log messages are assembled only from values normalized by safeLogValue")
     private Optional<FraudAlert> processInTransaction(TransactionEvent transactionEvent) {
         transactionHistoryRepository.lockCustomer(transactionEvent.customerId());
 
@@ -92,13 +88,15 @@ public final class FraudDetectionService
                     alertRepository.findByTransactionId(transactionEvent.id());
             if (existingAlert.isPresent()) {
                 log.info(
-                        "Duplicate transaction {} received, returning existing alert {}",
-                        transactionEvent.id(),
-                        existingAlert.get().id());
+                        "Duplicate transaction "
+                                + safeLogValue(transactionEvent.id())
+                                + " received, returning existing alert "
+                                + safeLogValue(existingAlert.get().id()));
             } else {
                 log.info(
-                        "Duplicate clean transaction {} received, returning no alert",
-                        transactionEvent.id());
+                        "Duplicate clean transaction "
+                                + safeLogValue(transactionEvent.id())
+                                + " received, returning no alert");
             }
             return existingAlert;
         }
@@ -121,7 +119,10 @@ public final class FraudDetectionService
         transactionHistoryRepository.save(transactionEvent);
 
         if (triggered.isEmpty()) {
-            log.debug("Transaction {} passed all fraud rules", transactionEvent.id());
+            log.debug(
+                    "Transaction "
+                            + safeLogValue(transactionEvent.id())
+                            + " passed all fraud rules");
             return Optional.empty();
         }
 
@@ -129,17 +130,22 @@ public final class FraudDetectionService
         FraudAlert saved = alertRepository.save(alert);
 
         log.warn(
-                "Fraud alert created: {} - severity={}, rules={}",
-                saved.id(),
-                saved.highestSeverity(),
-                triggered.stream().map(RuleResult::ruleName).toList());
+                "Fraud alert created: "
+                        + safeLogValue(saved.id())
+                        + " - severity="
+                        + safeLogValue(saved.highestSeverity())
+                        + ", rules="
+                        + triggered.stream()
+                                .map(RuleResult::ruleName)
+                                .map(FraudDetectionService::safeLogValue)
+                                .toList());
 
         return Optional.of(saved);
     }
 
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
-            justification = "UUIDs cannot contain CRLF characters")
+            justification = "Log messages are assembled only from values normalized by safeLogValue")
     private Optional<FraudAlert> resolveConcurrentDuplicate(
             TransactionEvent transactionEvent, DataIntegrityViolationException ex) {
         if (!transactionHistoryRepository.existsByTransactionId(transactionEvent.id())) {
@@ -150,13 +156,15 @@ public final class FraudDetectionService
                 alertRepository.findByTransactionId(transactionEvent.id());
         if (existingAlert.isPresent()) {
             log.info(
-                    "Concurrent duplicate transaction {} detected, returning existing alert {}",
-                    transactionEvent.id(),
-                    existingAlert.get().id());
+                    "Concurrent duplicate transaction "
+                            + safeLogValue(transactionEvent.id())
+                            + " detected, returning existing alert "
+                            + safeLogValue(existingAlert.get().id()));
         } else {
             log.info(
-                    "Concurrent duplicate clean transaction {} detected, returning no alert",
-                    transactionEvent.id());
+                    "Concurrent duplicate clean transaction "
+                            + safeLogValue(transactionEvent.id())
+                            + " detected, returning no alert");
         }
         return existingAlert;
     }
@@ -184,16 +192,24 @@ public final class FraudDetectionService
     @Override
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
-            justification = "UUIDs and enums cannot contain CRLF characters")
+            justification = "Log messages are assembled only from values normalized by safeLogValue")
     public Optional<FraudAlert> updateStatus(UUID alertId, AlertStatus newStatus) {
-        return alertRepository
-                .findById(alertId)
-                .map(
-                        alert -> {
-                            FraudAlert updated = alert.withStatus(newStatus);
-                            FraudAlert saved = alertRepository.save(updated);
-                            log.info("Alert {} status updated to {}", saved.id(), saved.status());
-                            return saved;
-                        });
+        Optional<FraudAlert> existingAlert = alertRepository.findById(alertId);
+        if (existingAlert.isEmpty()) {
+            return Optional.empty();
+        }
+
+        FraudAlert updated = existingAlert.orElseThrow().withStatus(newStatus);
+        FraudAlert saved = alertRepository.save(updated);
+        log.info(
+                "Alert "
+                        + safeLogValue(saved.id())
+                        + " status updated to "
+                        + safeLogValue(saved.status()));
+        return Optional.of(saved);
+    }
+
+    private static String safeLogValue(Object value) {
+        return SensitiveLogValueSanitizer.normalizeForLog(Objects.toString(value, ""));
     }
 }
