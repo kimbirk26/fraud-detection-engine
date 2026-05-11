@@ -3,6 +3,7 @@ package com.kim.fraudengine.adapter.rest.exception;
 import com.kim.fraudengine.adapter.rest.dto.ErrorResponse;
 import com.kim.fraudengine.infrastructure.logging.SensitiveLogValueSanitizer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Locale;
@@ -13,6 +14,7 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
@@ -148,6 +150,41 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of(403, "Forbidden", "Access is denied.", traceId));
+    }
+
+    @ExceptionHandler(CallNotPermittedException.class)
+    public ResponseEntity<ErrorResponse> handleCircuitBreakerOpen(CallNotPermittedException ex) {
+        String traceId = newTraceId();
+        log.warn(
+                "Circuit breaker open [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getMessage()));
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(
+                        ErrorResponse.of(
+                                503,
+                                "Service Unavailable",
+                                "A downstream dependency is temporarily unavailable. Please retry later.",
+                                traceId));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        String traceId = newTraceId();
+
+        log.info(
+                "Response status exception [traceId={}]: {}",
+                traceId,
+                SensitiveLogValueSanitizer.normalizeForLog(ex.getReason()));
+
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(
+                        ErrorResponse.of(
+                                ex.getStatusCode().value(),
+                                ex.getStatusCode().toString(),
+                                ex.getReason(),
+                                traceId));
     }
 
     @ExceptionHandler(Exception.class)

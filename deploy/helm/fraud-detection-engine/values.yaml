@@ -90,16 +90,31 @@ jwt:
 cors:
   allowedOrigins: []
 
+metrics:
+  prometheus:
+    enabled: true
+
 rules:
+  scoring:
+    threshold: "40"
   amount:
     highThreshold: "50000.00"
     mediumThreshold: "10000.00"
+    highScore: "40"
+    mediumScore: "20"
+  blacklist:
+    score: "50"
   foreignCountry:
     homeCountryCode: ZA
     minimumAmount: "1000.00"
+    score: "20"
   velocity:
     maxTransactions: "5"
     windowMinutes: "10"
+    score: "40"
+  outOfHours:
+    score: "15"
+  alertCorrelationWindowMinutes: "5"
 
 authBootstrap:
   enabled: false
@@ -130,7 +145,8 @@ secrets:
   data:
     dbUser: ""
     dbPassword: ""
-    jwtSecret: ""
+    jwtPrivateKey: ""
+    jwtPublicKey: ""
     jwtIssuer: ""
     jwtAudience: ""
 
@@ -148,9 +164,12 @@ externalSecret:
     dbPassword:
       key: ""
       property: dbPassword
-    jwtSecret:
+    jwtPrivateKey:
       key: ""
-      property: jwtSecret
+      property: jwtPrivateKey
+    jwtPublicKey:
+      key: ""
+      property: jwtPublicKey
     jwtIssuer:
       key: ""
       property: jwtIssuer

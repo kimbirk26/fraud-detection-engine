@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.outbound.TransactionEventPublisher;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -16,7 +17,17 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
-/** Outbound adapter: publishes transaction domain events to Kafka. */
+/**
+ * Outbound adapter: publishes transaction domain events to Kafka.
+ *
+ * <p>Uses {@code customerId} as the Kafka partition key to ensure all transactions for the same
+ * customer are routed to the same partition. This guarantees per-customer ordering, which is
+ * critical for velocity rule accuracy: the consumer processes events in order, so the
+ * transaction-count window is always consistent.
+ *
+ * <p>Protected by a Resilience4j circuit breaker ({@code kafkaPublisher}) that opens after repeated
+ * failures, preventing cascade effects when the Kafka cluster is unavailable.
+ */
 @Component
 @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaTransactionPublisher implements TransactionEventPublisher {
@@ -42,6 +53,7 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
     }
 
     @Override
+    @CircuitBreaker(name = "kafkaPublisher", fallbackMethod = "publishFallback")
     @SuppressFBWarnings(
             value = "CRLF_INJECTION_LOGS",
             justification =
@@ -66,5 +78,16 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while publishing transaction event", e);
         }
+    }
+
+    @SuppressWarnings("unused")
+    private void publishFallback(TransactionEvent transactionEvent, Throwable throwable) {
+        log.error(
+                "Circuit breaker open - failed to publish transaction {} to Kafka: {}",
+                transactionEvent.id(),
+                throwable.getMessage());
+        throw new KafkaPublishFailureException(
+                "Kafka publisher circuit breaker is open for transaction " + transactionEvent.id(),
+                throwable);
     }
 }

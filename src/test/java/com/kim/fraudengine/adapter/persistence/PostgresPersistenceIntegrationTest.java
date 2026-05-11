@@ -61,7 +61,9 @@ class PostgresPersistenceIntegrationTest {
                                 RuleResult.flag(
                                         "FOREIGN_COUNTRY",
                                         Severity.MEDIUM,
-                                        "Foreign transaction")));
+                                        "Foreign transaction",
+                                        20)),
+                        20);
 
         FraudAlert saved = alertRepository.save(alert);
 

@@ -9,6 +9,7 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,6 +62,11 @@ public class AlertRepositoryAdapter implements AlertRepository {
         return jpaRepository.findByHighestSeverity(severity).stream().map(this::toDomain).toList();
     }
 
+    @Override
+    public Optional<FraudAlert> findLatestOpenByCustomerId(String customerId, Instant since) {
+        return jpaRepository.findLatestOpenByCustomerId(customerId, since).map(this::toDomain);
+    }
+
     private AlertEntity toEntity(FraudAlert alert) {
         try {
             String json = objectMapper.writeValueAsString(alert.triggeredRules());
@@ -71,7 +77,9 @@ public class AlertRepositoryAdapter implements AlertRepository {
                     json,
                     alert.highestSeverity(),
                     alert.status(),
-                    alert.createdAt());
+                    alert.createdAt(),
+                    alert.totalScore(),
+                    alert.correlationGroupId());
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialise triggered rules", e);
         }
@@ -92,7 +100,9 @@ public class AlertRepositoryAdapter implements AlertRepository {
                     rules,
                     entity.getHighestSeverity(),
                     entity.getStatus(),
-                    entity.getCreatedAt());
+                    entity.getCreatedAt(),
+                    entity.getTotalScore(),
+                    entity.getCorrelationGroupId());
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialise triggered rules", e);
         }

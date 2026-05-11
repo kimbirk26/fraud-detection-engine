@@ -61,7 +61,7 @@ class AlertControllerTest {
 
     private FraudAlert sampleAlert() {
         List<RuleResult> rules =
-                List.of(RuleResult.flag("AmountThreshold", Severity.HIGH, "Amount exceeds limit"));
+                List.of(RuleResult.flag("AmountThreshold", Severity.HIGH, "Amount exceeds limit", 40));
         return new FraudAlert(
                 ALERT_ID,
                 TRANSACTION_ID,
@@ -69,7 +69,9 @@ class AlertControllerTest {
                 rules,
                 Severity.HIGH,
                 AlertStatus.OPEN,
-                Instant.now());
+                Instant.now(),
+                40,
+                null);
     }
 
     // --- GET /api/v1/alerts/{id} ---
@@ -183,10 +185,12 @@ class AlertControllerTest {
                         CUSTOMER_ID,
                         List.of(
                                 RuleResult.flag(
-                                        "AmountThreshold", Severity.HIGH, "Amount exceeds limit")),
+                                        "AmountThreshold", Severity.HIGH, "Amount exceeds limit", 40)),
                         Severity.HIGH,
                         AlertStatus.UNDER_REVIEW,
-                        java.time.Instant.now());
+                        java.time.Instant.now(),
+                        40,
+                        null);
 
         when(getAlertsUseCase.getById(ALERT_ID)).thenReturn(Optional.of(sampleAlert()));
         when(updateAlertStatusUseCase.updateStatus(ALERT_ID, AlertStatus.UNDER_REVIEW))

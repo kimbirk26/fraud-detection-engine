@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.kim.fraudengine.application.FraudDetectionService;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
+import com.kim.fraudengine.domain.port.outbound.RuleConfigurationProvider;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
 import com.kim.fraudengine.infrastructure.config.RuleConfig;
+import java.util.List;
+import com.kim.fraudengine.infrastructure.observability.FraudMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +56,16 @@ class FraudDetectionEngineApplicationTests {
                     return action.doInTransaction(new SimpleTransactionStatus());
                 }
             };
+        }
+
+        @Bean
+        FraudMetrics fraudMetrics() {
+            return new FraudMetrics(new SimpleMeterRegistry());
+        }
+
+        @Bean
+        RuleConfigurationProvider ruleConfigurationProvider() {
+            return List::of;
         }
     }
 }

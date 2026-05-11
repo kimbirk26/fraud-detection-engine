@@ -15,7 +15,7 @@ class ResponseRecordDefensiveCopyTest {
     void alertResponse_defensively_copies_triggered_rules() {
         List<AlertResponse.RuleResultResponse> triggeredRules = new ArrayList<>();
         triggeredRules.add(
-                new AlertResponse.RuleResultResponse("RULE", SeverityResponse.HIGH, "reason"));
+                new AlertResponse.RuleResultResponse("RULE", SeverityResponse.HIGH, "reason", 40));
 
         AlertResponse response =
                 new AlertResponse(
@@ -25,7 +25,9 @@ class ResponseRecordDefensiveCopyTest {
                         triggeredRules,
                         SeverityResponse.HIGH,
                         AlertStatusResponse.OPEN,
-                        Instant.parse("2026-04-11T00:00:00Z"));
+                        Instant.parse("2026-04-11T00:00:00Z"),
+                        40,
+                        UUID.randomUUID());
 
         triggeredRules.clear();
 
@@ -35,7 +37,7 @@ class ResponseRecordDefensiveCopyTest {
                                 response.triggeredRules()
                                         .add(
                                                 new AlertResponse.RuleResultResponse(
-                                                        "OTHER", SeverityResponse.LOW, "other")))
+                                                        "OTHER", SeverityResponse.LOW, "other", 10)))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

@@ -58,9 +58,12 @@ externalSecret:
     dbPassword:
       key: fraud-detection-engine/application
       property: dbPassword
-    jwtSecret:
+    jwtPrivateKey:
       key: fraud-detection-engine/application
-      property: jwtSecret
+      property: jwtPrivateKey
+    jwtPublicKey:
+      key: fraud-detection-engine/application
+      property: jwtPublicKey
     jwtIssuer:
       key: fraud-detection-engine/application
       property: jwtIssuer

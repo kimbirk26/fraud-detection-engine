@@ -1,30 +1,50 @@
 package com.kim.fraudengine.domain.rule;
 
+import com.kim.fraudengine.domain.model.RuleConfiguration;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
+import com.kim.fraudengine.domain.port.outbound.RuleConfigurationProvider;
 
 public final class VelocityRule implements FraudRule {
 
     private static final String RULE_NAME = "VELOCITY_CHECK";
 
-    private final int maxTransactions;
-    private final int windowMinutes;
+    private final RuleConfigurationProvider configProvider;
+    private final int defaultMaxTransactions;
+    private final int defaultWindowMinutes;
+    private final int defaultScore;
 
-    public VelocityRule(int maxTransactions, int windowMinutes) {
-        if (maxTransactions < 1) {
+    public VelocityRule(
+            RuleConfigurationProvider configProvider,
+            int defaultMaxTransactions,
+            int defaultWindowMinutes,
+            int defaultScore) {
+        if (defaultMaxTransactions < 1) {
             throw new IllegalArgumentException("maxTransactions must be positive");
         }
-        if (windowMinutes < 1) {
+        if (defaultWindowMinutes < 1) {
             throw new IllegalArgumentException("windowMinutes must be positive");
         }
 
-        this.maxTransactions = maxTransactions;
-        this.windowMinutes = windowMinutes;
+        this.configProvider = configProvider;
+        this.defaultMaxTransactions = defaultMaxTransactions;
+        this.defaultWindowMinutes = defaultWindowMinutes;
+        this.defaultScore = defaultScore;
     }
 
     @Override
     public RuleResult evaluate(TransactionContext context) {
+        RuleConfiguration config = configProvider.getConfiguration(RULE_NAME).orElse(null);
+        int maxTransactions =
+                config != null
+                        ? intParam(config, "maxTransactions", defaultMaxTransactions)
+                        : defaultMaxTransactions;
+        int windowMinutes =
+                config != null
+                        ? intParam(config, "windowMinutes", defaultWindowMinutes)
+                        : defaultWindowMinutes;
+        int score = config != null ? config.score() : defaultScore;
 
         long recentTransactionCount = context.recentTransactionCount();
         long totalTransactions = recentTransactionCount + 1;
@@ -34,7 +54,8 @@ public final class VelocityRule implements FraudRule {
                     ruleName(),
                     Severity.HIGH,
                     "%d transactions in %d minutes (limit: %d)"
-                            .formatted(totalTransactions, windowMinutes, maxTransactions));
+                            .formatted(totalTransactions, windowMinutes, maxTransactions),
+                    score);
         }
 
         return RuleResult.pass(ruleName());
@@ -43,5 +64,25 @@ public final class VelocityRule implements FraudRule {
     @Override
     public String ruleName() {
         return RULE_NAME;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return configProvider
+                .getConfiguration(RULE_NAME)
+                .map(RuleConfiguration::enabled)
+                .orElse(true);
+    }
+
+    private static int intParam(RuleConfiguration config, String key, int fallback) {
+        String value = config.parameters().get(key);
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 }

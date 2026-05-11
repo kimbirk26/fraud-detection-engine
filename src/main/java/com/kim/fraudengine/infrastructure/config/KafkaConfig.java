@@ -17,6 +17,22 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
+/**
+ * Kafka infrastructure configuration: topic creation, error handling, and container factory.
+ *
+ * <p>This configuration works in tandem with the partition key strategy documented in ADR-0006.
+ * The dual-layer concurrency control for per-customer ordering is:
+ * <ol>
+ *   <li><strong>Kafka partition key ({@code customerId})</strong> — Routes all transactions for
+ *       the same customer to the same partition, guaranteeing in-order consumption by a single
+ *       consumer instance.</li>
+ *   <li><strong>PostgreSQL advisory lock ({@code customerId})</strong> — Serializes processing
+ *       within the database transaction, protecting against race conditions during consumer
+ *       rebalancing or duplicate delivery.</li>
+ * </ol>
+ *
+ * @see <a href="docs/adr/0006-kafka-partition-key-strategy.md">ADR-0006</a>
+ */
 @Configuration
 @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaConfig {

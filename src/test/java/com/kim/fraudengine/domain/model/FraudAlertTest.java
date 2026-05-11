@@ -14,7 +14,7 @@ class FraudAlertTest {
     @Test
     void constructor_defensively_copies_triggered_rules() {
         List<RuleResult> triggeredRules = new ArrayList<>();
-        triggeredRules.add(RuleResult.flag("BLACKLIST_MATCH", Severity.HIGH, "blacklisted"));
+        triggeredRules.add(RuleResult.flag("BLACKLIST_MATCH", Severity.HIGH, "blacklisted", 50));
 
         FraudAlert alert =
                 new FraudAlert(
@@ -24,7 +24,9 @@ class FraudAlertTest {
                         triggeredRules,
                         Severity.HIGH,
                         AlertStatus.OPEN,
-                        Instant.parse("2026-04-11T00:00:00Z"));
+                        Instant.parse("2026-04-11T00:00:00Z"),
+                        50,
+                        null);
 
         triggeredRules.clear();
 

@@ -84,7 +84,7 @@ class TransactionControllerTest {
 
     private FraudAlert sampleAlert() {
         List<RuleResult> rules =
-                List.of(RuleResult.flag("AmountThreshold", Severity.HIGH, "Amount exceeds limit"));
+                List.of(RuleResult.flag("AmountThreshold", Severity.HIGH, "Amount exceeds limit", 40));
         return new FraudAlert(
                 ALERT_ID,
                 TRANSACTION_ID,
@@ -92,7 +92,9 @@ class TransactionControllerTest {
                 rules,
                 Severity.HIGH,
                 AlertStatus.OPEN,
-                Instant.now());
+                Instant.now(),
+                40,
+                null);
     }
 
     // --- POST /api/v1/transactions/sync ---

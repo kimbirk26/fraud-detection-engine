@@ -8,4 +8,12 @@ public interface FraudRule {
     RuleResult evaluate(TransactionContext transactionContext);
 
     String ruleName();
+
+    /**
+     * Whether this rule participates in evaluation. Defaults to {@code true}. Override to support
+     * dynamic rule enable/disable via a {@code RuleConfigurationProvider}.
+     */
+    default boolean isEnabled() {
+        return true;
+    }
 }

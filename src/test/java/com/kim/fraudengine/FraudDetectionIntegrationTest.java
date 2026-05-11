@@ -78,8 +78,12 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.highestSeverity").value("HIGH"))
+                .andExpect(jsonPath("$.totalScore").value(50))
+                .andExpect(jsonPath("$.correlationGroupId").exists())
                 .andExpect(
-                        jsonPath("$.triggeredRules[?(@.ruleName == 'BLACKLIST_MATCH')]").exists());
+                        jsonPath("$.triggeredRules[?(@.ruleName == 'BLACKLIST_MATCH')]").exists())
+                .andExpect(
+                        jsonPath("$.triggeredRules[0].score").isNumber());
     }
 
     // -----------------------------------------------------------------------

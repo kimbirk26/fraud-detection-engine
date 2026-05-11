@@ -8,16 +8,17 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.web.util.matcher.IpAddressMatcher;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Per-IP token-bucket rate limiter for the authentication endpoint.
@@ -26,19 +27,28 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * the bucket refills at {@code refillPerMinute} tokens per minute. Once a bucket is empty the
  * request is rejected with HTTP 429.
  *
- * <p>Note: buckets are held in-process memory. For multi-instance deployments consider replacing
- * the map with a distributed store (e.g. Redis via bucket4j-redis) so limits are enforced
- * cluster-wide.
+ * <h3>Multi-Instance Deployment Consideration</h3>
+ *
+ * <p>Buckets are held in-process memory using a {@link ConcurrentHashMap}. In an N-pod deployment,
+ * an attacker can make up to <strong>N * capacity</strong> attempts before being rate-limited across
+ * all pods (e.g., with capacity=5 and 6 pods: 30 attempts). This is acceptable for the current
+ * deployment size combined with Argon2's computational cost per attempt.
+ *
+ * <p>For cluster-wide enforcement, replace the {@code ConcurrentHashMap} with a distributed store
+ * (e.g., {@code bucket4j-redis}). See ADR-0004 for the full rationale and upgrade path.
  *
  * <p>This filter is NOT a {@code @Component} — it is registered explicitly via {@link
  * SecurityConfig#authRateLimitFilterRegistration(AuthRateLimitFilter)} to prevent Spring Boot from
  * auto-registering it on all paths in addition to the configured URL pattern.
+ *
+ * @see <a href="docs/adr/0004-in-memory-rate-limiting.md">ADR-0004</a>
  */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger securityLog =
             LoggerFactory.getLogger("com.capitec.fraud.security.events");
 
+    // TODO: Replace with bucket4j-redis for cluster-wide enforcement (see ADR-0004)
     private final ConcurrentHashMap<String, BucketEntry> buckets = new ConcurrentHashMap<>();
     private final AtomicInteger requestsSinceCleanup = new AtomicInteger();
     private final int capacity;

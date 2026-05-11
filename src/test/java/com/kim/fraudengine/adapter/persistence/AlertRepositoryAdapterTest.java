@@ -1,10 +1,5 @@
 package com.kim.fraudengine.adapter.persistence;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.adapter.persistence.entity.AlertEntity;
 import com.kim.fraudengine.domain.model.AlertStatus;
@@ -13,12 +8,6 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionEvent;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +15,24 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class AlertRepositoryAdapterTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
-    @Mock private AlertJpaRepository jpaRepository;
+    @Mock
+    private AlertJpaRepository jpaRepository;
     private AlertRepositoryAdapter adapter;
 
     @BeforeEach
@@ -47,7 +49,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "AMOUNT_THRESHOLD",
                                         Severity.HIGH,
-                                        "Amount exceeds threshold")));
+                                        "Amount exceeds threshold",
+                                        40)),
+                        40);
 
         when(jpaRepository.saveAndFlush(any(AlertEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -60,10 +64,12 @@ class AlertRepositoryAdapterTest {
 
         assertThat(entity.getTransactionId()).isEqualTo(alert.transactionId());
         assertThat(entity.getCustomerId()).isEqualTo(alert.customerId());
+        assertThat(entity.getTotalScore()).isEqualTo(40);
         assertThat(objectMapper.readTree(entity.getTriggeredRulesJson()).toString())
                 .contains("AMOUNT_THRESHOLD")
                 .contains("Amount exceeds threshold");
         assertThat(saved.triggeredRules()).containsExactlyElementsOf(alert.triggeredRules());
+        assertThat(saved.totalScore()).isEqualTo(40);
     }
 
     @Test
@@ -75,7 +81,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "BLACKLIST_MATCH",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
         AlertEntity entity = entity(alert);
 
         when(jpaRepository.findByTransactionId(alert.transactionId()))
@@ -87,6 +95,7 @@ class AlertRepositoryAdapterTest {
         assertThat(result.orElseThrow().triggeredRules())
                 .containsExactlyElementsOf(alert.triggeredRules());
         assertThat(result.orElseThrow().highestSeverity()).isEqualTo(Severity.HIGH);
+        assertThat(result.orElseThrow().totalScore()).isEqualTo(50);
     }
 
     @Test
@@ -98,7 +107,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "AMOUNT_THRESHOLD",
                                         Severity.MEDIUM,
-                                        "Amount exceeds threshold")));
+                                        "Amount exceeds threshold",
+                                        20)),
+                        20);
         FraudAlert secondAlert =
                 FraudAlert.from(
                         secondTransaction(),
@@ -106,7 +117,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "BLACKLIST_MATCH",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
 
         when(jpaRepository.findByCustomerId("CUST001"))
                 .thenReturn(List.of(entity(firstAlert), entity(secondAlert)));
@@ -119,6 +132,9 @@ class AlertRepositoryAdapterTest {
         assertThat(result)
                 .extracting(FraudAlert::highestSeverity)
                 .containsExactly(Severity.MEDIUM, Severity.HIGH);
+        assertThat(result)
+                .extracting(FraudAlert::totalScore)
+                .containsExactly(20, 50);
     }
 
     @Test
@@ -130,7 +146,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "FOREIGN_COUNTRY",
                                         Severity.MEDIUM,
-                                        "Foreign transaction")));
+                                        "Foreign transaction",
+                                        20)),
+                        20);
 
         when(jpaRepository.findByStatus(AlertStatus.OPEN)).thenReturn(List.of(entity(alert)));
 
@@ -155,7 +173,9 @@ class AlertRepositoryAdapterTest {
                                 RuleResult.flag(
                                         "BLACKLIST_MATCH",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
 
         when(jpaRepository.findByHighestSeverity(Severity.HIGH)).thenReturn(List.of(entity(alert)));
 
@@ -170,6 +190,36 @@ class AlertRepositoryAdapterTest {
                         });
     }
 
+    @Test
+    void shouldMapCorrelationGroupIdAndTotalScore() {
+        UUID correlationGroupId = UUID.randomUUID();
+        FraudAlert alert =
+                FraudAlert.from(
+                                transaction(),
+                                List.of(
+                                        RuleResult.flag(
+                                                "VELOCITY_CHECK",
+                                                Severity.HIGH,
+                                                "Too many transactions",
+                                                40)),
+                                40)
+                        .withCorrelationGroupId(correlationGroupId);
+
+        when(jpaRepository.saveAndFlush(any(AlertEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        FraudAlert saved = adapter.save(alert);
+
+        ArgumentCaptor<AlertEntity> entityCaptor = ArgumentCaptor.forClass(AlertEntity.class);
+        verify(jpaRepository).saveAndFlush(entityCaptor.capture());
+        AlertEntity entity = entityCaptor.getValue();
+
+        assertThat(entity.getTotalScore()).isEqualTo(40);
+        assertThat(entity.getCorrelationGroupId()).isEqualTo(correlationGroupId);
+        assertThat(saved.totalScore()).isEqualTo(40);
+        assertThat(saved.correlationGroupId()).isEqualTo(correlationGroupId);
+    }
+
     private AlertEntity entity(FraudAlert alert) throws IOException {
         return new AlertEntity(
                 alert.id(),
@@ -178,7 +228,9 @@ class AlertRepositoryAdapterTest {
                 objectMapper.writeValueAsString(alert.triggeredRules()),
                 alert.highestSeverity(),
                 alert.status(),
-                alert.createdAt());
+                alert.createdAt(),
+                alert.totalScore(),
+                alert.correlationGroupId());
     }
 
     private TransactionEvent transaction() {

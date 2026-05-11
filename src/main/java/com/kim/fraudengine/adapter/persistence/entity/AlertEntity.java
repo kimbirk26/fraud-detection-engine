@@ -53,6 +53,12 @@ public class AlertEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "total_score", nullable = false)
+    private int totalScore;
+
+    @Column(name = "correlation_group_id", columnDefinition = "uuid")
+    private UUID correlationGroupId;
+
     public AlertEntity(
             UUID id,
             UUID transactionId,
@@ -60,7 +66,9 @@ public class AlertEntity {
             String triggeredRulesJson,
             Severity highestSeverity,
             AlertStatus status,
-            Instant createdAt) {
+            Instant createdAt,
+            int totalScore,
+            UUID correlationGroupId) {
         this.id = id;
         this.transactionId = transactionId;
         this.customerId = customerId;
@@ -68,5 +76,7 @@ public class AlertEntity {
         this.highestSeverity = highestSeverity;
         this.status = status;
         this.createdAt = createdAt;
+        this.totalScore = totalScore;
+        this.correlationGroupId = correlationGroupId;
     }
 }

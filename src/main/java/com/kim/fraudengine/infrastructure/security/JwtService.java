@@ -3,33 +3,41 @@ package com.kim.fraudengine.infrastructure.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public final class JwtService {
 
-    private final SecretKey signingKey;
+    private final RSAPrivateKey privateKey;
+    private final RSAPublicKey publicKey;
     private final long expiryMinutes;
     private final String issuer;
     private final String audience;
 
     public JwtService(
-            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.private-key}") String privateKeyPem,
+            @Value("${app.jwt.public-key}") String publicKeyPem,
             @Value("${app.jwt.expiry-minutes:60}") long expiryMinutes,
             @Value("${app.jwt.issuer}") String issuer,
             @Value("${app.jwt.audience}") String audience) {
 
-        if (secret == null || secret.isBlank() || secret.length() < 32) {
-            throw new IllegalArgumentException(
-                    "app.jwt.secret must be at least 32 characters for HS256");
+        if (privateKeyPem == null || privateKeyPem.isBlank()) {
+            throw new IllegalArgumentException("app.jwt.private-key must not be blank");
+        }
+        if (publicKeyPem == null || publicKeyPem.isBlank()) {
+            throw new IllegalArgumentException("app.jwt.public-key must not be blank");
         }
         if (issuer == null || issuer.isBlank()) {
             throw new IllegalArgumentException("app.jwt.issuer must not be blank");
@@ -37,7 +45,8 @@ public final class JwtService {
         if (audience == null || audience.isBlank()) {
             throw new IllegalArgumentException("app.jwt.audience must not be blank");
         }
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.privateKey = parsePrivateKey(privateKeyPem);
+        this.publicKey = parsePublicKey(publicKeyPem);
         this.expiryMinutes = expiryMinutes;
         this.issuer = issuer;
         this.audience = audience;
@@ -62,7 +71,7 @@ public final class JwtService {
                         .expiration(Date.from(expiry))
                         .id(UUID.randomUUID().toString())
                         .claim("roles", roles)
-                        .signWith(signingKey);
+                        .signWith(privateKey, Jwts.SIG.RS256);
 
         if (customerId != null && !customerId.isBlank()) {
             builder.claim("customerId", customerId);
@@ -103,7 +112,7 @@ public final class JwtService {
 
     private Claims parseClaims(String token) {
         return Jwts.parser()
-                .verifyWith(signingKey)
+                .verifyWith(publicKey)
                 .requireIssuer(issuer)
                 .requireAudience(audience)
                 .build()
@@ -113,5 +122,35 @@ public final class JwtService {
 
     private boolean isExpired(String token) {
         return parseClaims(token).getExpiration().before(new Date());
+    }
+
+    private static RSAPrivateKey parsePrivateKey(String pem) {
+        try {
+            String base64 =
+                    pem.replace("-----BEGIN PRIVATE KEY-----", "")
+                            .replace("-----END PRIVATE KEY-----", "")
+                            .replaceAll("\\s", "");
+            byte[] decoded = Base64.getDecoder().decode(base64);
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            return (RSAPrivateKey) kf.generatePrivate(spec);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalArgumentException("Invalid RSA private key PEM", e);
+        }
+    }
+
+    private static RSAPublicKey parsePublicKey(String pem) {
+        try {
+            String base64 =
+                    pem.replace("-----BEGIN PUBLIC KEY-----", "")
+                            .replace("-----END PUBLIC KEY-----", "")
+                            .replaceAll("\\s", "");
+            byte[] decoded = Base64.getDecoder().decode(base64);
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            return (RSAPublicKey) kf.generatePublic(spec);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalArgumentException("Invalid RSA public key PEM", e);
+        }
     }
 }

@@ -5,8 +5,46 @@ spring:
 
 app:
   jwt:
-    # Local-only signing key to make the profile self-contained. Never enable this profile in prod.
-    secret: ${LOCAL_JWT_SECRET:fraud-engine-local-profile-jwt-secret-32}
+    # Local-only RSA key pair to make the profile self-contained. Never enable this profile in prod.
+    private-key: |
+      -----BEGIN PRIVATE KEY-----
+      MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDc4ZhhOUfvdZEn
+      iR9NeCyG0WJjVibDZL5LHjHOMFUj4CAjI+c9zWlQkU3FObjY1TlkilSYIKxADm1K
+      8aKiu6YNQdikcCHSrPdrpkiHrwYKLJUevHW8S213fVY14iNiwCfMag9rTuAtuCM/
+      bn8iOKagHCPuaN8cQFGmnQ4HsI3X9LSest0VbwwS1GLRk7FjgnfSuWsZ807COmH9
+      Ao2WMITKqTbOyGEKQZg7Gaycc5E+VRI7t9u+ySiLT7z74C0U4bm177+fC5mMJ0Fi
+      A6kPigheYVurr63UYLvK6LlszBSsawq2ZQBSykztfyCcnxV4JRlC0wPqoWCFoAh2
+      EFw5MBURAgMBAAECggEABPLcqZXlG557nl6GkVISaGQU20695b3fxZGI2G+cx3wQ
+      d1afM/0djHa07/d+y3pnyxUr3FVLX0Z9UUpgAwy9h/haT8EknmO6SdVMNIzJxdpt
+      i6GDcv+bKSwG7/psIcQbIClO7KsCznmS5Ejs3JFDb1pFvakPh9Yy6mxmryVrpaws
+      asElFuIOVR7OrPvyoyexh0R3d23G2caBg7JphB8bP8qSB+B7U0mhotsNKMLlCiU8
+      ik4p6zxbnYALH64ZSwubl45NxGCfxu9PnulLsMhP3HNpIfMjege/gWsTRieNntQo
+      DgX4uYkI5Oqj2wdM2EFV4Q+GzpP9o2orfAKsoRQKQQKBgQD6AioMdRGfS8kOgm6h
+      zKRkXjaY6yoZawf+d4NljhYcoiktJD6C99+X4dtYnMl+ULuc56P8d2/qxGvPfxxL
+      UnOuoIP2UOH3UWsSc9QKr0yRU8V2jIMyTTt83pmbmMNbTx3bI9woXHBzBWgA9jdB
+      awVp3vcpDJvni2UIemwmLp9SkwKBgQDiLLtFCLHrojSC9tCUkuui+qeFbuQd6++d
+      nKGL9kqVacrTKf5CDhXS00axwFoz2LWw2S91/swjKpIrVgiziBELLQRJX9MTSQ6D
+      koF1WYisEmhHikIRX2vl/SIYCN2T/KSb/KtJx0PBKEdgwQAZOaVEicGXY4q+7bXv
+      PaAhN0wMSwKBgDeGIYaQvXAuaaHCUAW5KE1uKxv9JmVswuK98j2st7Z2QUTYRtXZ
+      bRwTOh7M+2cFURWA0IeykvWF2BfGOCd2UWDYH1amEflWaLw5Yz9YPV4NR86TWFPk
+      mTCbU2weGkz+HjhcF3oTRZoV+ko0ZIMv3IztyuCf/0QGTlL6tWgpdJLnAoGAV1jr
+      IegPvm6wVPu45ggvlIu08qU22A9sRLRe90yw1S88M3z+QshpyTfrD26351oEIT5f
+      Q/SZJeOk+7OIPL2Jx4UlKKknPUVzo4CLGqTvUXTybN6KUWdGplWyOxIBcMubTtqv
+      1BhupERH/KfMv/ExUFzbNPoudTocjz5/fxR5/C0CgYA/Seq9l1SqI0OL/r76hgTL
+      XgCH2pVx+8N/Jfup4p/Rz05VrJAEwjIGxd2D+w2KdAz5S27ipNvoQ+LE5rZWEqHi
+      MrZNVWixZ8IhcuQbXjn07ORPvO+PBO0U0TyB1kLOCqcZpjrWx3eg5yEMtEP5nZ27
+      +7RniPrtdWTAiSbyhZmjSw==
+      -----END PRIVATE KEY-----
+    public-key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3OGYYTlH73WRJ4kfTXgs
+      htFiY1Ymw2S+Sx4xzjBVI+AgIyPnPc1pUJFNxTm42NU5ZIpUmCCsQA5tSvGiorum
+      DUHYpHAh0qz3a6ZIh68GCiyVHrx1vEttd31WNeIjYsAnzGoPa07gLbgjP25/Ijim
+      oBwj7mjfHEBRpp0OB7CN1/S0nrLdFW8MEtRi0ZOxY4J30rlrGfNOwjph/QKNljCE
+      yqk2zshhCkGYOxmsnHORPlUSO7fbvskoi0+8++AtFOG5te+/nwuZjCdBYgOpD4oI
+      XmFbq6+t1GC7yui5bMwUrGsKtmUAUspM7X8gnJ8VeCUZQtMD6qFghaAIdhBcOTAV
+      EQIDAQAB
+      -----END PUBLIC KEY-----
     issuer: ${LOCAL_JWT_ISSUER:fraud-detection-engine-local}
     audience: ${LOCAL_JWT_AUDIENCE:fraud-detection-engine-api-local}
   cors:

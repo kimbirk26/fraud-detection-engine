@@ -13,7 +13,9 @@ public record FraudAlert(
         List<RuleResult> triggeredRules,
         Severity highestSeverity,
         AlertStatus status,
-        Instant createdAt) {
+        Instant createdAt,
+        int totalScore,
+        UUID correlationGroupId) {
     public FraudAlert {
         triggeredRules =
                 List.copyOf(
@@ -28,7 +30,22 @@ public record FraudAlert(
                 triggeredRules,
                 highestSeverity,
                 newStatus,
-                createdAt);
+                createdAt,
+                totalScore,
+                correlationGroupId);
+    }
+
+    public FraudAlert withCorrelationGroupId(UUID groupId) {
+        return new FraudAlert(
+                id,
+                transactionId,
+                customerId,
+                triggeredRules,
+                highestSeverity,
+                status,
+                createdAt,
+                totalScore,
+                groupId);
     }
 
     @Override
@@ -36,7 +53,8 @@ public record FraudAlert(
         return List.copyOf(triggeredRules);
     }
 
-    public static FraudAlert from(TransactionEvent transactionEvent, List<RuleResult> triggered) {
+    public static FraudAlert from(
+            TransactionEvent transactionEvent, List<RuleResult> triggered, int totalScore) {
         Severity highest =
                 triggered.stream()
                         .map(RuleResult::severity)
@@ -49,6 +67,8 @@ public record FraudAlert(
                 triggered,
                 highest,
                 AlertStatus.OPEN,
-                Instant.now().truncatedTo(ChronoUnit.MICROS));
+                Instant.now().truncatedTo(ChronoUnit.MICROS),
+                totalScore,
+                null);
     }
 }

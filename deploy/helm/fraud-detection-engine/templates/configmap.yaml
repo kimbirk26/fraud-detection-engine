@@ -25,7 +25,8 @@ data:
   MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
   MANAGEMENT_HEALTH_LIVENESSSTATE_ENABLED: "true"
   MANAGEMENT_HEALTH_READINESSSTATE_ENABLED: "true"
-  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "fraud-detection-engine"
   {{- if .Values.springProfilesActive }}
   SPRING_PROFILES_ACTIVE: {{ .Values.springProfilesActive | quote }}
   {{- end }}

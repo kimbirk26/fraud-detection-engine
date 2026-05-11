@@ -3,11 +3,13 @@ package com.kim.fraudengine.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.kim.fraudengine.domain.model.AlertStatus;
+import com.kim.fraudengine.domain.model.EvaluationOutcome;
 import com.kim.fraudengine.domain.model.FraudAlert;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
@@ -15,8 +17,11 @@ import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
+import com.kim.fraudengine.domain.port.outbound.RuleConfigurationProvider;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
 import com.kim.fraudengine.domain.rule.RuleEngine;
+import com.kim.fraudengine.infrastructure.observability.FraudMetrics;
+import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +47,10 @@ class FraudDetectionServiceTest {
 
     @Mock private TransactionHistoryRepository transactionHistoryRepository;
 
+    @Mock private FraudMetrics metrics;
+
+    private final RuleConfigurationProvider configProvider = List::of;
+
     private final TransactionOperations transactionOperations =
             new TransactionOperations() {
                 @Override
@@ -54,12 +63,16 @@ class FraudDetectionServiceTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(metrics.startTimer()).thenReturn(Timer.start());
         service =
                 new FraudDetectionService(
                         ruleEngine,
                         alertRepository,
                         transactionHistoryRepository,
                         transactionOperations,
+                        metrics,
+                        configProvider,
+                        5,
                         5);
     }
 
@@ -73,7 +86,8 @@ class FraudDetectionServiceTest {
         when(transactionHistoryRepository.countByCustomerIdSince(
                         transaction.customerId(), windowStart))
                 .thenReturn(2L);
-        when(ruleEngine.evaluate(new TransactionContext(transaction, 2L))).thenReturn(List.of());
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 2L)))
+                .thenReturn(new EvaluationOutcome(List.of(), List.of(), 0, false));
 
         Optional<FraudAlert> result = service.process(transaction);
 
@@ -87,12 +101,12 @@ class FraudDetectionServiceTest {
     }
 
     @Test
-    void shouldCreateAndSaveAlertWhenRulesTrigger() {
+    void shouldCreateAndSaveAlertWhenScoreExceedsThreshold() {
         TransactionEvent transaction = transaction();
         RuleResult highRisk =
-                RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold");
+                RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold", 40);
         RuleResult mediumRisk =
-                RuleResult.flag("FOREIGN_COUNTRY", Severity.MEDIUM, "Foreign transaction detected");
+                RuleResult.flag("FOREIGN_COUNTRY", Severity.MEDIUM, "Foreign transaction detected", 20);
 
         when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
                 .thenReturn(false);
@@ -100,9 +114,15 @@ class FraudDetectionServiceTest {
                         transaction.customerId(), transaction.timestamp().minusSeconds(300)))
                 .thenReturn(1L);
         when(ruleEngine.evaluate(new TransactionContext(transaction, 1L)))
-                .thenReturn(List.of(highRisk, mediumRisk));
+                .thenReturn(new EvaluationOutcome(
+                        List.of(highRisk, mediumRisk),
+                        List.of(highRisk, mediumRisk),
+                        60,
+                        true));
         when(alertRepository.save(any(FraudAlert.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+                .thenReturn(Optional.empty());
 
         Optional<FraudAlert> result = service.process(transaction);
 
@@ -111,11 +131,38 @@ class FraudDetectionServiceTest {
         assertThat(result.orElseThrow().customerId()).isEqualTo(transaction.customerId());
         assertThat(result.orElseThrow().highestSeverity()).isEqualTo(Severity.HIGH);
         assertThat(result.orElseThrow().triggeredRules()).containsExactly(highRisk, mediumRisk);
+        assertThat(result.orElseThrow().totalScore()).isEqualTo(60);
+        assertThat(result.orElseThrow().correlationGroupId()).isNotNull();
 
         ArgumentCaptor<FraudAlert> alertCaptor = ArgumentCaptor.forClass(FraudAlert.class);
         verify(alertRepository).save(alertCaptor.capture());
         assertThat(alertCaptor.getValue().transactionId()).isEqualTo(transaction.id());
-        assertThat(alertCaptor.getValue().customerId()).isEqualTo(transaction.customerId());
+        assertThat(alertCaptor.getValue().totalScore()).isEqualTo(60);
+        verify(transactionHistoryRepository).save(transaction);
+    }
+
+    @Test
+    void shouldNotCreateAlertWhenScoreBelowThreshold() {
+        TransactionEvent transaction = transaction();
+        RuleResult lowRisk =
+                RuleResult.flag("OUT_OF_HOURS", Severity.MEDIUM, "Transaction at 02:00", 15);
+
+        when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        transaction.customerId(), transaction.timestamp().minusSeconds(300)))
+                .thenReturn(1L);
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 1L)))
+                .thenReturn(new EvaluationOutcome(
+                        List.of(lowRisk),
+                        List.of(lowRisk),
+                        15,
+                        false));
+
+        Optional<FraudAlert> result = service.process(transaction);
+
+        assertThat(result).isEmpty();
+        verify(alertRepository, never()).save(any());
         verify(transactionHistoryRepository).save(transaction);
     }
 
@@ -129,7 +176,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "BLACKLIST_CHECK",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
 
         when(transactionHistoryRepository.existsByTransactionId(transaction.id())).thenReturn(true);
         when(alertRepository.findByTransactionId(transaction.id()))
@@ -170,7 +219,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "VELOCITY_CHECK",
                                         Severity.HIGH,
-                                        "4 transactions in 5 minutes")));
+                                        "4 transactions in 5 minutes",
+                                        40)),
+                        40);
 
         when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
                 .thenReturn(false, true);
@@ -178,12 +229,13 @@ class FraudDetectionServiceTest {
                         transaction.customerId(), transaction.timestamp().minusSeconds(300)))
                 .thenReturn(3L);
         when(ruleEngine.evaluate(new TransactionContext(transaction, 3L)))
-                .thenReturn(
-                        List.of(
-                                RuleResult.flag(
-                                        "VELOCITY_CHECK",
-                                        Severity.HIGH,
-                                        "4 transactions in 5 minutes")));
+                .thenReturn(new EvaluationOutcome(
+                        List.of(RuleResult.flag("VELOCITY_CHECK", Severity.HIGH,
+                                "4 transactions in 5 minutes", 40)),
+                        List.of(RuleResult.flag("VELOCITY_CHECK", Severity.HIGH,
+                                "4 transactions in 5 minutes", 40)),
+                        40,
+                        true));
         when(alertRepository.findByTransactionId(transaction.id()))
                 .thenReturn(Optional.of(existingAlert));
         org.mockito.Mockito.doThrow(new DataIntegrityViolationException("duplicate transaction"))
@@ -201,8 +253,8 @@ class FraudDetectionServiceTest {
     void shouldReturnExistingAlertWhenAlertSaveDetectsConcurrentDuplicate() {
         TransactionEvent transaction = transaction();
         RuleResult resultRule =
-                RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold");
-        FraudAlert existingAlert = FraudAlert.from(transaction, List.of(resultRule));
+                RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold", 40);
+        FraudAlert existingAlert = FraudAlert.from(transaction, List.of(resultRule), 40);
 
         when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
                 .thenReturn(false, true);
@@ -210,9 +262,12 @@ class FraudDetectionServiceTest {
                         transaction.customerId(), transaction.timestamp().minusSeconds(300)))
                 .thenReturn(0L);
         when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
-                .thenReturn(List.of(resultRule));
+                .thenReturn(new EvaluationOutcome(
+                        List.of(resultRule), List.of(resultRule), 40, true));
         when(alertRepository.findByTransactionId(transaction.id()))
                 .thenReturn(Optional.of(existingAlert));
+        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+                .thenReturn(Optional.empty());
         when(alertRepository.save(any(FraudAlert.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate alert"));
 
@@ -233,7 +288,8 @@ class FraudDetectionServiceTest {
         when(transactionHistoryRepository.countByCustomerIdSince(
                         transaction.customerId(), transaction.timestamp().minusSeconds(300)))
                 .thenReturn(0L);
-        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L))).thenReturn(List.of());
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
+                .thenReturn(new EvaluationOutcome(List.of(), List.of(), 0, false));
         org.mockito.Mockito.doThrow(new DataIntegrityViolationException("null customer"))
                 .when(transactionHistoryRepository)
                 .save(transaction);
@@ -255,7 +311,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "AMOUNT_THRESHOLD",
                                         Severity.MEDIUM,
-                                        "Amount exceeds threshold")));
+                                        "Amount exceeds threshold",
+                                        20)),
+                        20);
         FraudAlert secondAlert =
                 FraudAlert.from(
                         secondTransaction(),
@@ -263,7 +321,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "BLACKLIST_MATCH",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
 
         when(alertRepository.findByCustomerId("CUST001"))
                 .thenReturn(List.of(firstAlert, secondAlert));
@@ -283,7 +343,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "FOREIGN_COUNTRY",
                                         Severity.MEDIUM,
-                                        "Foreign transaction")));
+                                        "Foreign transaction",
+                                        20)),
+                        20);
 
         when(alertRepository.findByStatus(AlertStatus.OPEN)).thenReturn(List.of(openAlert));
 
@@ -302,7 +364,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "BLACKLIST_MATCH",
                                         Severity.HIGH,
-                                        "Merchant is blacklisted")));
+                                        "Merchant is blacklisted",
+                                        50)),
+                        50);
 
         when(alertRepository.findBySeverity(Severity.HIGH)).thenReturn(List.of(highAlert));
 
@@ -321,7 +385,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "AMOUNT_THRESHOLD",
                                         Severity.MEDIUM,
-                                        "Amount exceeds threshold")));
+                                        "Amount exceeds threshold",
+                                        20)),
+                        20);
 
         when(alertRepository.findById(alert.id())).thenReturn(Optional.of(alert));
 
@@ -329,6 +395,34 @@ class FraudDetectionServiceTest {
 
         assertThat(result).hasValue(alert);
         verify(alertRepository).findById(alert.id());
+    }
+
+    @Test
+    void shouldReuseCorrelationGroupIdFromRecentOpenAlert() {
+        TransactionEvent transaction = transaction();
+        UUID existingGroupId = UUID.randomUUID();
+        RuleResult rule = RuleResult.flag("BLACKLIST_MATCH", Severity.HIGH, "Blacklisted", 50);
+
+        FraudAlert recentAlert = FraudAlert.from(transaction, List.of(rule), 50)
+                .withCorrelationGroupId(existingGroupId);
+
+        when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        transaction.customerId(), transaction.timestamp().minusSeconds(300)))
+                .thenReturn(0L);
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
+                .thenReturn(new EvaluationOutcome(
+                        List.of(rule), List.of(rule), 50, true));
+        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+                .thenReturn(Optional.of(recentAlert));
+        when(alertRepository.save(any(FraudAlert.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<FraudAlert> result = service.process(transaction);
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().correlationGroupId()).isEqualTo(existingGroupId);
     }
 
     private TransactionEvent transaction() {
@@ -353,7 +447,9 @@ class FraudDetectionServiceTest {
                                 RuleResult.flag(
                                         "AMOUNT_THRESHOLD",
                                         Severity.HIGH,
-                                        "Amount exceeds threshold")));
+                                        "Amount exceeds threshold",
+                                        40)),
+                        40);
 
         when(alertRepository.findById(alert.id())).thenReturn(Optional.of(alert));
         when(alertRepository.save(any(FraudAlert.class)))

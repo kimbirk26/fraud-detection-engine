@@ -24,11 +24,14 @@ public final class AlertMapper {
                 rules,
                 toResponse(alert.highestSeverity()),
                 toResponse(alert.status()),
-                alert.createdAt());
+                alert.createdAt(),
+                alert.totalScore(),
+                alert.correlationGroupId());
     }
 
     private static RuleResultResponse toRuleResponse(RuleResult rule) {
-        return new RuleResultResponse(rule.ruleName(), toResponse(rule.severity()), rule.reason());
+        return new RuleResultResponse(
+                rule.ruleName(), toResponse(rule.severity()), rule.reason(), rule.score());
     }
 
     private static SeverityResponse toResponse(Severity severity) {
