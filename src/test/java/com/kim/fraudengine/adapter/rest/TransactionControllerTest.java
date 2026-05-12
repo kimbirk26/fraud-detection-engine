@@ -1,6 +1,7 @@
 package com.kim.fraudengine.adapter.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -19,6 +20,7 @@ import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
 import com.kim.fraudengine.domain.port.outbound.TransactionEventPublisher;
+import com.kim.fraudengine.infrastructure.security.CustomerAccessEvaluator;
 import com.kim.fraudengine.infrastructure.security.JwtAuthenticationFilter;
 import com.kim.fraudengine.infrastructure.security.JwtService;
 import java.math.BigDecimal;
@@ -29,15 +31,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TransactionController.class)
-@Import(JwtAuthenticationFilter.class)
+@Import({JwtAuthenticationFilter.class, TransactionControllerTest.MethodSecurityTestConfig.class})
 class TransactionControllerTest {
 
     @Autowired MockMvc mockMvc;
@@ -53,6 +61,9 @@ class TransactionControllerTest {
     @MockitoBean JwtService jwtService;
 
     @MockitoBean UserDetailsService userDetailsService;
+
+    @MockitoBean(name = "customerAccess")
+    CustomerAccessEvaluator customerAccessEvaluator;
 
     private static final UUID TRANSACTION_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -102,6 +113,7 @@ class TransactionControllerTest {
     @Test
     @WithMockUser(authorities = "transactions:write")
     void submitSync_returns200_whenFraudDetected() throws Exception {
+        when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
         when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
         when(processTransactionUseCase.process(any())).thenReturn(Optional.of(sampleAlert()));
 
@@ -118,6 +130,7 @@ class TransactionControllerTest {
     @Test
     @WithMockUser(authorities = "transactions:write")
     void submitSync_returns204_whenNoFraudDetected() throws Exception {
+        when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
         when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
         when(processTransactionUseCase.process(any())).thenReturn(Optional.empty());
 
@@ -150,11 +163,25 @@ class TransactionControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @WithMockUser(authorities = "transactions:write")
+    void submitSync_returns403_whenCustomerMismatch() throws Exception {
+        when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(false);
+
+        mockMvc.perform(
+                        post("/api/v1/transactions/sync")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(validRequest())))
+                .andExpect(status().isForbidden());
+    }
+
     // --- POST /api/v1/transactions/async ---
 
     @Test
     @WithMockUser(authorities = "transactions:write")
     void submitAsync_returns202() throws Exception {
+        when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
         when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
 
         mockMvc.perform(
@@ -175,5 +202,44 @@ class TransactionControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest())))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(authorities = "transactions:write")
+    void submitAsync_returns403_whenCustomerMismatch() throws Exception {
+        when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(false);
+
+        mockMvc.perform(
+                        post("/api/v1/transactions/async")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(validRequest())))
+                .andExpect(status().isForbidden());
+    }
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
+
+        @Bean
+        SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
+            http.csrf(AbstractHttpConfigurer::disable)
+                    .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                    .exceptionHandling(
+                            ex ->
+                                    ex.authenticationEntryPoint(
+                                                    (req, res, e) ->
+                                                            res.sendError(
+                                                                    jakarta.servlet.http
+                                                                            .HttpServletResponse
+                                                                            .SC_UNAUTHORIZED))
+                                            .accessDeniedHandler(
+                                                    (req, res, e) ->
+                                                            res.sendError(
+                                                                    jakarta.servlet.http
+                                                                            .HttpServletResponse
+                                                                            .SC_FORBIDDEN)));
+            return http.build();
+        }
     }
 }

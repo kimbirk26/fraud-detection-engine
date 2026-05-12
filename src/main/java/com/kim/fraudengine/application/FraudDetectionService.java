@@ -168,7 +168,8 @@ public final class FraudDetectionService
                 transactionEvent, outcome.triggeredResults(), outcome.totalScore());
 
         // Correlation: reuse group ID from recent open alert for same customer, or generate new
-        UUID correlationGroupId = resolveCorrelationGroupId(transactionEvent.customerId());
+        UUID correlationGroupId = resolveCorrelationGroupId(
+                transactionEvent.customerId(), transactionEvent.timestamp());
         alert = alert.withCorrelationGroupId(correlationGroupId);
 
         FraudAlert saved = alertRepository.save(alert);
@@ -194,8 +195,8 @@ public final class FraudDetectionService
         return Optional.of(saved);
     }
 
-    private UUID resolveCorrelationGroupId(String customerId) {
-        Instant since = Instant.now().minusSeconds((long) alertCorrelationWindowMinutes * 60);
+    private UUID resolveCorrelationGroupId(String customerId, Instant eventTime) {
+        Instant since = eventTime.minusSeconds((long) alertCorrelationWindowMinutes * 60);
         Optional<FraudAlert> recentAlert =
                 alertRepository.findLatestOpenByCustomerId(customerId, since);
         return recentAlert
@@ -275,14 +276,28 @@ public final class FraudDetectionService
     private int getVelocityWindowMinutes() {
         return configProvider
                 .getConfiguration("VELOCITY_CHECK")
-                .map(
-                        c ->
-                                Integer.parseInt(
-                                        c.parameters()
-                                                .getOrDefault(
-                                                        "windowMinutes",
-                                                        String.valueOf(
-                                                                defaultVelocityWindowMinutes))))
+                .map(c -> {
+                    String raw = c.parameters()
+                            .getOrDefault("windowMinutes",
+                                    String.valueOf(defaultVelocityWindowMinutes));
+                    try {
+                        int parsed = Integer.parseInt(raw);
+                        if (parsed < 1) {
+                            log.warn("Invalid velocity window value "
+                                    + safeLogValue(raw)
+                                    + ", falling back to default "
+                                    + defaultVelocityWindowMinutes);
+                            return defaultVelocityWindowMinutes;
+                        }
+                        return parsed;
+                    } catch (NumberFormatException e) {
+                        log.warn("Unparseable velocity window value "
+                                + safeLogValue(raw)
+                                + ", falling back to default "
+                                + defaultVelocityWindowMinutes);
+                        return defaultVelocityWindowMinutes;
+                    }
+                })
                 .orElse(defaultVelocityWindowMinutes);
     }
 

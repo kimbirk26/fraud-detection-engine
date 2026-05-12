@@ -52,7 +52,7 @@ public class TransactionController {
                     "Publishes the transaction to Kafka for background processing. Returns 202 immediately.")
     @ApiResponse(responseCode = "202", description = "Accepted — queued for processing")
     @ApiResponse(responseCode = "400", description = "Validation error")
-    @PreAuthorize("hasAuthority('transactions:write')")
+    @PreAuthorize("hasAuthority('transactions:write') and @customerAccess.canWrite(#request.customerId(), authentication)")
     @PostMapping("/async")
     public ResponseEntity<Void> submitAsync(@Valid @RequestBody TransactionRequest request) {
         TransactionEvent transactionEvent = toDomain(request);
@@ -73,7 +73,7 @@ public class TransactionController {
             content = @Content(schema = @Schema(implementation = AlertResponse.class)))
     @ApiResponse(responseCode = "204", description = "No fraud detected")
     @ApiResponse(responseCode = "400", description = "Validation error")
-    @PreAuthorize("hasAuthority('transactions:write')")
+    @PreAuthorize("hasAuthority('transactions:write') and @customerAccess.canWrite(#request.customerId(), authentication)")
     @PostMapping("/sync")
     public ResponseEntity<AlertResponse> submitSync(
             @Valid @RequestBody TransactionRequest request) {

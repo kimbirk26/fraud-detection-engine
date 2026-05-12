@@ -39,6 +39,29 @@ public class CustomerAccessEvaluator {
         return false;
     }
 
+    public boolean canWrite(String customerId, Authentication authentication) {
+        if (customerId == null
+                || customerId.isBlank()
+                || authentication == null
+                || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        if (authentication.getPrincipal()
+                instanceof CustomerScopedPrincipal customerScopedPrincipal) {
+            if (customerScopedPrincipal.customerId() == null) {
+                return true;
+            }
+            return Objects.equals(
+                    normalizeCustomerId(customerId),
+                    normalizeCustomerId(customerScopedPrincipal.customerId()));
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+    }
+
     private String normalizeCustomerId(String customerId) {
         if (customerId == null) {
             return null;

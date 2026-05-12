@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.kim.fraudengine.domain.model.AlertStatus;
 import com.kim.fraudengine.domain.model.EvaluationOutcome;
 import com.kim.fraudengine.domain.model.FraudAlert;
+import com.kim.fraudengine.domain.model.RuleConfiguration;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionCategory;
@@ -25,6 +26,7 @@ import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +51,7 @@ class FraudDetectionServiceTest {
 
     @Mock private FraudMetrics metrics;
 
-    private final RuleConfigurationProvider configProvider = List::of;
+    private RuleConfigurationProvider configProvider = List::of;
 
     private final TransactionOperations transactionOperations =
             new TransactionOperations() {
@@ -74,6 +76,18 @@ class FraudDetectionServiceTest {
                         configProvider,
                         5,
                         5);
+    }
+
+    private FraudDetectionService serviceWithConfigProvider(RuleConfigurationProvider provider) {
+        return new FraudDetectionService(
+                ruleEngine,
+                alertRepository,
+                transactionHistoryRepository,
+                transactionOperations,
+                metrics,
+                provider,
+                5,
+                5);
     }
 
     @Test
@@ -103,6 +117,7 @@ class FraudDetectionServiceTest {
     @Test
     void shouldCreateAndSaveAlertWhenScoreExceedsThreshold() {
         TransactionEvent transaction = transaction();
+        Instant expectedCorrelationSince = transaction.timestamp().minusSeconds(300);
         RuleResult highRisk =
                 RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold", 40);
         RuleResult mediumRisk =
@@ -121,7 +136,8 @@ class FraudDetectionServiceTest {
                         true));
         when(alertRepository.save(any(FraudAlert.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+        when(alertRepository.findLatestOpenByCustomerId(
+                        eq(transaction.customerId()), eq(expectedCorrelationSince)))
                 .thenReturn(Optional.empty());
 
         Optional<FraudAlert> result = service.process(transaction);
@@ -252,6 +268,7 @@ class FraudDetectionServiceTest {
     @Test
     void shouldReturnExistingAlertWhenAlertSaveDetectsConcurrentDuplicate() {
         TransactionEvent transaction = transaction();
+        Instant expectedCorrelationSince = transaction.timestamp().minusSeconds(300);
         RuleResult resultRule =
                 RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount exceeds threshold", 40);
         FraudAlert existingAlert = FraudAlert.from(transaction, List.of(resultRule), 40);
@@ -266,7 +283,8 @@ class FraudDetectionServiceTest {
                         List.of(resultRule), List.of(resultRule), 40, true));
         when(alertRepository.findByTransactionId(transaction.id()))
                 .thenReturn(Optional.of(existingAlert));
-        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+        when(alertRepository.findLatestOpenByCustomerId(
+                        eq(transaction.customerId()), eq(expectedCorrelationSince)))
                 .thenReturn(Optional.empty());
         when(alertRepository.save(any(FraudAlert.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate alert"));
@@ -400,6 +418,7 @@ class FraudDetectionServiceTest {
     @Test
     void shouldReuseCorrelationGroupIdFromRecentOpenAlert() {
         TransactionEvent transaction = transaction();
+        Instant expectedCorrelationSince = transaction.timestamp().minusSeconds(300);
         UUID existingGroupId = UUID.randomUUID();
         RuleResult rule = RuleResult.flag("BLACKLIST_MATCH", Severity.HIGH, "Blacklisted", 50);
 
@@ -414,7 +433,8 @@ class FraudDetectionServiceTest {
         when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
                 .thenReturn(new EvaluationOutcome(
                         List.of(rule), List.of(rule), 50, true));
-        when(alertRepository.findLatestOpenByCustomerId(eq(transaction.customerId()), any(Instant.class)))
+        when(alertRepository.findLatestOpenByCustomerId(
+                        eq(transaction.customerId()), eq(expectedCorrelationSince)))
                 .thenReturn(Optional.of(recentAlert));
         when(alertRepository.save(any(FraudAlert.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -423,6 +443,124 @@ class FraudDetectionServiceTest {
 
         assertThat(result).isPresent();
         assertThat(result.orElseThrow().correlationGroupId()).isEqualTo(existingGroupId);
+    }
+
+    @Test
+    void shouldUseEventTimeForCorrelationWindow_notWallClock() {
+        // Use a very old event time to prove event time is used, not Instant.now()
+        TransactionEvent oldTransaction = new TransactionEvent(
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                "CUST001",
+                new BigDecimal("1500.00"),
+                "MERCH001",
+                "Test Merchant",
+                TransactionCategory.ONLINE_PURCHASE,
+                "ZAR",
+                "ZA",
+                Instant.parse("2020-06-15T12:00:00Z"));
+
+        Instant expectedCorrelationSince = oldTransaction.timestamp().minusSeconds(300);
+        RuleResult rule = RuleResult.flag("AMOUNT_THRESHOLD", Severity.HIGH, "Amount high", 50);
+
+        when(transactionHistoryRepository.existsByTransactionId(oldTransaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        oldTransaction.customerId(), oldTransaction.timestamp().minusSeconds(300)))
+                .thenReturn(0L);
+        when(ruleEngine.evaluate(new TransactionContext(oldTransaction, 0L)))
+                .thenReturn(new EvaluationOutcome(
+                        List.of(rule), List.of(rule), 50, true));
+        when(alertRepository.findLatestOpenByCustomerId(
+                        eq(oldTransaction.customerId()), eq(expectedCorrelationSince)))
+                .thenReturn(Optional.empty());
+        when(alertRepository.save(any(FraudAlert.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<FraudAlert> result = service.process(oldTransaction);
+
+        assertThat(result).isPresent();
+        // Verify correlation used the event time (2020-06-15T11:55:00Z), not wall clock
+        verify(alertRepository).findLatestOpenByCustomerId(
+                eq(oldTransaction.customerId()), eq(expectedCorrelationSince));
+    }
+
+    // --- Config parsing tests ---
+
+    @Test
+    void shouldFallBackToDefaultWhenWindowMinutesIsNonNumeric() {
+        RuleConfigurationProvider badConfigProvider = () -> List.of(
+                new RuleConfiguration("VELOCITY_CHECK", true, 30,
+                        Map.of("windowMinutes", "ten")));
+
+        FraudDetectionService svc = serviceWithConfigProvider(badConfigProvider);
+
+        TransactionEvent transaction = transaction();
+        // Default window is 5 minutes = 300 seconds
+        Instant expectedWindowStart = transaction.timestamp().minusSeconds(300);
+
+        when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        transaction.customerId(), expectedWindowStart))
+                .thenReturn(0L);
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
+                .thenReturn(new EvaluationOutcome(List.of(), List.of(), 0, false));
+
+        svc.process(transaction);
+
+        verify(transactionHistoryRepository)
+                .countByCustomerIdSince(transaction.customerId(), expectedWindowStart);
+    }
+
+    @Test
+    void shouldFallBackToDefaultWhenWindowMinutesIsNegative() {
+        RuleConfigurationProvider badConfigProvider = () -> List.of(
+                new RuleConfiguration("VELOCITY_CHECK", true, 30,
+                        Map.of("windowMinutes", "-1")));
+
+        FraudDetectionService svc = serviceWithConfigProvider(badConfigProvider);
+
+        TransactionEvent transaction = transaction();
+        Instant expectedWindowStart = transaction.timestamp().minusSeconds(300);
+
+        when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        transaction.customerId(), expectedWindowStart))
+                .thenReturn(0L);
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
+                .thenReturn(new EvaluationOutcome(List.of(), List.of(), 0, false));
+
+        svc.process(transaction);
+
+        verify(transactionHistoryRepository)
+                .countByCustomerIdSince(transaction.customerId(), expectedWindowStart);
+    }
+
+    @Test
+    void shouldUseConfiguredWindowMinutesWhenValid() {
+        RuleConfigurationProvider goodConfigProvider = () -> List.of(
+                new RuleConfiguration("VELOCITY_CHECK", true, 30,
+                        Map.of("windowMinutes", "10")));
+
+        FraudDetectionService svc = serviceWithConfigProvider(goodConfigProvider);
+
+        TransactionEvent transaction = transaction();
+        // 10 minutes = 600 seconds
+        Instant expectedWindowStart = transaction.timestamp().minusSeconds(600);
+
+        when(transactionHistoryRepository.existsByTransactionId(transaction.id()))
+                .thenReturn(false);
+        when(transactionHistoryRepository.countByCustomerIdSince(
+                        transaction.customerId(), expectedWindowStart))
+                .thenReturn(0L);
+        when(ruleEngine.evaluate(new TransactionContext(transaction, 0L)))
+                .thenReturn(new EvaluationOutcome(List.of(), List.of(), 0, false));
+
+        svc.process(transaction);
+
+        verify(transactionHistoryRepository)
+                .countByCustomerIdSince(transaction.customerId(), expectedWindowStart);
     }
 
     private TransactionEvent transaction() {
