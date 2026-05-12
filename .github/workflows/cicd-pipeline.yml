@@ -129,7 +129,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
-          ./mvnw sonar:sonar
+          ./mvnw compile sonar:sonar
           -DskipTests=true
           -Dspotbugs.skip=true
           -Ddependency-check.skip=true
