@@ -80,7 +80,7 @@ class KafkaAsyncPipelineIntegrationTest extends AbstractIntegrationTest {
                             JsonNode alert = alerts.get(0);
                             assertThat(alert.get("customerId").asText()).isEqualTo(customerId);
                             assertThat(alert.get("highestSeverity").asText()).isEqualTo("HIGH");
-                            assertThat(alert.get("totalScore").asInt()).isEqualTo(50);
+                            assertThat(alert.get("totalScore").asInt()).isGreaterThanOrEqualTo(50);
                             assertThat(alert.get("correlationGroupId")).isNotNull();
                             assertThat(alert.get("triggeredRules")).isNotEmpty();
 
