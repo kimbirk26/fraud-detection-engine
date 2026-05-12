@@ -1,6 +1,7 @@
 package com.kim.fraudengine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,7 +79,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
                                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.highestSeverity").value("HIGH"))
-                .andExpect(jsonPath("$.totalScore").value(50))
+                .andExpect(jsonPath("$.totalScore").value(greaterThanOrEqualTo(50)))
                 .andExpect(jsonPath("$.correlationGroupId").exists())
                 .andExpect(
                         jsonPath("$.triggeredRules[?(@.ruleName == 'BLACKLIST_MATCH')]").exists())

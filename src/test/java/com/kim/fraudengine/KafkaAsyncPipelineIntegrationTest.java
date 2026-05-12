@@ -2,6 +2,7 @@ package com.kim.fraudengine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -63,7 +65,11 @@ class KafkaAsyncPipelineIntegrationTest extends AbstractIntegrationTest {
                             MvcResult result =
                                     mockMvc.perform(
                                                     get("/api/v1/alerts/customer/{customerId}",
-                                                            customerId))
+                                                            customerId)
+                                                            .with(user("admin").authorities(
+                                                                    new SimpleGrantedAuthority("alerts:read"),
+                                                                    new SimpleGrantedAuthority("alerts:read:all"),
+                                                                    new SimpleGrantedAuthority("ROLE_ADMIN"))))
                                             .andExpect(status().isOk())
                                             .andReturn();
 
