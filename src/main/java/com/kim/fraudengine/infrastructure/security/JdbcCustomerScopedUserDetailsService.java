@@ -54,7 +54,7 @@ public class JdbcCustomerScopedUserDetailsService
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(LOAD_USER_SQL, username);
         if (rows.isEmpty()) {
-            throw new UsernameNotFoundException("User not found: " + username);
+            throw new UsernameNotFoundException("User not found");
         }
         if (rows.size() > 1) {
             throw new IllegalStateException("Multiple auth users found for username: " + username);
@@ -81,7 +81,7 @@ public class JdbcCustomerScopedUserDetailsService
     public UserDetails updatePassword(UserDetails user, String newPassword) {
         int updated = jdbcTemplate.update(UPDATE_PASSWORD_SQL, newPassword, user.getUsername());
         if (updated != 1) {
-            throw new UsernameNotFoundException("User not found: " + user.getUsername());
+            throw new UsernameNotFoundException("User not found");
         }
 
         String customerId =
