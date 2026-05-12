@@ -34,7 +34,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @WithMockUser(authorities = "transactions:write")
+    @WithMockUser(authorities = {"transactions:write", "ROLE_ADMIN"})
     void cleanTransaction_returns204() throws Exception {
         TransactionRequest request =
                 new TransactionRequest(
@@ -59,7 +59,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @WithMockUser(authorities = "transactions:write")
+    @WithMockUser(authorities = {"transactions:write", "ROLE_ADMIN"})
     void blacklistedMerchant_returns200WithBlacklistAlert() throws Exception {
         TransactionRequest request =
                 new TransactionRequest(
@@ -91,7 +91,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @WithMockUser(authorities = "transactions:write")
+    @WithMockUser(authorities = {"transactions:write", "ROLE_ADMIN"})
     void duplicateTransaction_isIdempotent() throws Exception {
         UUID transactionId = UUID.randomUUID();
         TransactionRequest request =
@@ -137,7 +137,7 @@ class FraudDetectionIntegrationTest extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @WithMockUser(authorities = {"transactions:write", "alerts:write"})
+    @WithMockUser(authorities = {"transactions:write", "alerts:write", "ROLE_ADMIN"})
     void flaggedAlert_canBeMovedToUnderReview() throws Exception {
         TransactionRequest request =
                 new TransactionRequest(

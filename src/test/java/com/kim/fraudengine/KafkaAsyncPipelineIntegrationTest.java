@@ -32,7 +32,7 @@ class KafkaAsyncPipelineIntegrationTest extends AbstractIntegrationTest {
     @Autowired ObjectMapper objectMapper;
 
     @Test
-    @WithMockUser(authorities = {"transactions:write", "alerts:read", "alerts:read:all"})
+    @WithMockUser(authorities = {"transactions:write", "alerts:read", "alerts:read:all", "ROLE_ADMIN"})
     void asyncPipeline_publishesAndConsumesTransaction_creatingAlert() throws Exception {
         String customerId = "CUST-ASYNC-" + UUID.randomUUID().toString().substring(0, 8);
         UUID transactionId = UUID.randomUUID();
