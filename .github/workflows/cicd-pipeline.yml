@@ -36,6 +36,108 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: true
         continue-on-error: false
 
+  # ==================== TEST COVERAGE ====================
+  test-coverage:
+    name: Test Coverage (JaCoCo)
+    runs-on: ubuntu-latest
+    needs: [ gitleaks-scan ]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Tests with Coverage
+        run: ./mvnw verify -Dspotbugs.skip=true -Ddependency-check.skip=true -q
+
+      - name: Upload JaCoCo Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          retention-days: 30
+
+  jacoco-pr-comment:
+    name: PR Coverage Comment
+    runs-on: ubuntu-latest
+    needs: [ test-coverage ]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download JaCoCo Report
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+
+      - name: Post Coverage Comment
+        uses: madrapps/jacoco-report@v1.7.2
+        with:
+          paths: target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 0
+          min-coverage-changed-files: 0
+          title: Test Coverage
+          update-comment: true
+
+  sonarcloud-analysis:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: [ test-coverage ]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Download JaCoCo Report
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          ./mvnw sonar:sonar
+          -DskipTests=true
+          -Dspotbugs.skip=true
+          -Ddependency-check.skip=true
+          -Dsonar.organization=${{ github.repository_owner }}
+          -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
+          -Dsonar.host.url=https://sonarcloud.io
+          -q
+
   # ==================== FAST ACCURATE SAST ====================
   qodana-analysis:
     name: Qodana - IntelliJ SAST Analysis
@@ -275,7 +377,7 @@ jobs:
   compliance-checks:
     name: Compliance & Audit Logging
     runs-on: ubuntu-latest
-    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation ]
+    needs: [ gitleaks-scan, test-coverage, sonarcloud-analysis, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation ]
     if: always()
     permissions:
       contents: read
@@ -289,13 +391,13 @@ jobs:
       - name: Verify GPG-Signed Commits
         run: |
           echo "=== Commit Signature Verification ==="
-          
+
           TOTAL_COMMITS=$(git rev-list --count origin/master..HEAD 2>/dev/null || echo 0)
           SIGNED_COMMITS=$(git log --pretty=format:"%H %G?" origin/master..HEAD 2>/dev/null | grep -c "G$" || echo 0)
-          
+
           echo "Total commits: $TOTAL_COMMITS"
           echo "Signed commits: $SIGNED_COMMITS"
-          
+
           if [ "$TOTAL_COMMITS" -gt 0 ] && [ "$SIGNED_COMMITS" -eq "$TOTAL_COMMITS" ]; then
             echo "PASSED All commits are GPG-signed"
           elif [ "$TOTAL_COMMITS" -eq 0 ]; then
@@ -315,6 +417,8 @@ jobs:
       - name: Generate Compliance Report
         env:
           GITLEAKS_RESULT: ${{ needs.gitleaks-scan.result }}
+          TEST_COVERAGE_RESULT: ${{ needs.test-coverage.result }}
+          SONARCLOUD_RESULT: ${{ needs.sonarcloud-analysis.result }}
           QODANA_RESULT: ${{ needs.qodana-analysis.result }}
           CODEQL_RESULT: ${{ needs.codeql-analysis.result }}
           DEPENDENCY_RESULT: ${{ needs.dependency-check.result }}
@@ -335,6 +439,7 @@ jobs:
           GATE_PASS=true
           for required_result in \
             "$GITLEAKS_RESULT" \
+            "$TEST_COVERAGE_RESULT" \
             "$QODANA_RESULT" \
             "$CODEQL_RESULT" \
             "$DEPENDENCY_RESULT"; do
@@ -350,37 +455,40 @@ jobs:
 
           cat > compliance-report.md <<EOF
           # Security & Compliance Report
-          
-          **Repository:** ${GITHUB_REPOSITORY}  
-          **Timestamp:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")  
+
+          **Repository:** ${GITHUB_REPOSITORY}
+          **Timestamp:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
           **Commit:** ${GITHUB_SHA}
-          
+
           ## Configured Security Checks
           - Secret Scanning (GitLeaks)
+          - Test Coverage (JaCoCo)
+          - Code Quality (SonarCloud)
           - SAST Analysis (Qodana - IntelliJ)
           - SAST Analysis (CodeQL)
           - Dependency Scanning (OWASP Dependency-Check)
-          - Code Quality (SonarQube)
           - Container Scanning (Trivy)
           - Dockerfile Audit (Hadolint)
           - SBOM Generation (CycloneDX + Syft)
           - Commit Signature Verification
-          
+
           ## Controls Covered by Pipeline
           - PCI DSS v3.2.1-oriented checks
           - OWASP Top 10-oriented checks
           - CWE Top 25-oriented checks
           - Secure coding standards checks
           - Dependency inventory and audit artifacts
-          
+
           ## Security Gates Status
           - GitLeaks: $(format_gate_status "$GITLEAKS_RESULT")
+          - Test Coverage: $(format_gate_status "$TEST_COVERAGE_RESULT")
+          - SonarCloud: $(format_gate_status "$SONARCLOUD_RESULT")
           - Qodana: $(format_gate_status "$QODANA_RESULT")
           - CodeQL: $(format_gate_status "$CODEQL_RESULT")
           - Dependencies: $(format_gate_status "$DEPENDENCY_RESULT")
           - Container Security: $(format_gate_status "$CONTAINER_RESULT")
           - SBOM Generation: $(format_gate_status "$SBOM_RESULT")
-          
+
           ---
           **Pipeline Status:** ${PIPELINE_STATUS}
           EOF
@@ -397,7 +505,7 @@ jobs:
   security-gate:
     name: Security Gate - Final Review
     runs-on: ubuntu-latest
-    needs: [ gitleaks-scan, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation, compliance-checks ]
+    needs: [ gitleaks-scan, test-coverage, sonarcloud-analysis, qodana-analysis, codeql-analysis, dependency-check, container-security, sbom-generation, compliance-checks ]
     if: always()
     permissions:
       contents: read
@@ -413,9 +521,9 @@ jobs:
           echo "║         BANKING-GRADE SECURITY GATE EVALUATION             ║"
           echo "╚════════════════════════════════════════════════════════════╝"
           echo ""
-          
+
           GATE_PASS=true
-          
+
           # GitLeaks
           if [[ "${{ needs.gitleaks-scan.result }}" == "success" ]]; then
             echo "PASSED GitLeaks: PASSED - No secrets detected"
@@ -423,7 +531,22 @@ jobs:
             echo "FAILED GitLeaks: FAILED - Secrets detected in repository"
             GATE_PASS=false
           fi
-          
+
+          # Test Coverage
+          if [[ "${{ needs.test-coverage.result }}" == "success" ]]; then
+            echo "PASSED Test Coverage: PASSED - Tests passed with coverage"
+          else
+            echo "FAILED Test Coverage: FAILED - Tests or coverage failed"
+            GATE_PASS=false
+          fi
+
+          # SonarCloud
+          if [[ "${{ needs.sonarcloud-analysis.result }}" == "success" ]]; then
+            echo "PASSED SonarCloud: PASSED - Quality gate passed"
+          else
+            echo "WARNING SonarCloud: WARNING - Review quality findings"
+          fi
+
           # Qodana
           if [[ "${{ needs.qodana-analysis.result }}" == "success" ]]; then
             echo "PASSED Qodana SAST: PASSED - Code quality acceptable"
@@ -431,7 +554,7 @@ jobs:
             echo "FAILED Qodana SAST: FAILED - Critical issues found"
             GATE_PASS=false
           fi
-          
+
           # CodeQL
           if [[ "${{ needs.codeql-analysis.result }}" == "success" ]]; then
             echo "PASSED CodeQL: PASSED - No critical vulnerabilities"
@@ -439,7 +562,7 @@ jobs:
             echo "FAILED CodeQL: FAILED - Vulnerabilities detected"
             GATE_PASS=false
           fi
-          
+
           # Dependency Check
           if [[ "${{ needs.dependency-check.result }}" == "success" ]]; then
             echo "PASSED OWASP Dependency-Check: PASSED - No high-risk CVEs"
@@ -447,28 +570,28 @@ jobs:
             echo "FAILED OWASP Dependency-Check: FAILED - CVEs detected"
             GATE_PASS=false
           fi
-          
+
           # Container Security
           if [[ "${{ needs.container-security.result }}" == "success" ]]; then
             echo "PASSED Container Security: PASSED - Image scanned"
           else
             echo "WARNING Container Security: WARNING - Review container findings"
           fi
-          
+
           # SBOM
           if [[ "${{ needs.sbom-generation.result }}" == "success" ]]; then
             echo "PASSED SBOM Generation: PASSED - Artifacts generated"
           else
             echo "WARNING SBOM Generation: WARNING - Check artifact generation"
           fi
-          
+
           # Compliance
           if [[ "${{ needs.compliance-checks.result }}" == "success" ]]; then
             echo "PASSED Compliance Checks: PASSED"
           else
-            echo "️Compliance Checks: WARNING - Review findings"
+            echo "Compliance Checks: WARNING - Review findings"
           fi
-          
+
           echo ""
           echo "╔════════════════════════════════════════════════════════════╗"
           if [[ "$GATE_PASS" == "true" ]]; then
@@ -488,6 +611,8 @@ jobs:
           script: |
             const statuses = {
               gitleaks: '${{ needs.gitleaks-scan.result }}',
+              coverage: '${{ needs.test-coverage.result }}',
+              sonarcloud: '${{ needs.sonarcloud-analysis.result }}',
               qodana: '${{ needs.qodana-analysis.result }}',
               codeql: '${{ needs.codeql-analysis.result }}',
               deps: '${{ needs.dependency-check.result }}',
@@ -505,6 +630,7 @@ jobs:
 
             const gateApproved = [
               statuses.gitleaks,
+              statuses.coverage,
               statuses.qodana,
               statuses.codeql,
               statuses.deps,
@@ -518,6 +644,8 @@ jobs:
               '| Scan | Status |',
               '|------|--------|',
               `| Secret Scanning (GitLeaks) | ${icon(statuses.gitleaks)} |`,
+              `| Test Coverage (JaCoCo) | ${icon(statuses.coverage)} |`,
+              `| Code Quality (SonarCloud) | ${icon(statuses.sonarcloud, true)} |`,
               `| SAST - Qodana | ${icon(statuses.qodana)} |`,
               `| SAST - CodeQL | ${icon(statuses.codeql)} |`,
               `| Dependency Check | ${icon(statuses.deps)} |`,
