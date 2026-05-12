@@ -81,6 +81,10 @@ public class KafkaTransactionPublisher implements TransactionEventPublisher {
     }
 
     @SuppressWarnings("unused")
+    @SuppressFBWarnings(
+            value = {"CRLF_INJECTION_LOGS", "UPM_UNCALLED_PRIVATE_METHOD"},
+            justification =
+                    "transactionEvent.id() is a UUID; method is called reflectively by Resilience4j @CircuitBreaker")
     private void publishFallback(TransactionEvent transactionEvent, Throwable throwable) {
         log.error(
                 "Circuit breaker open - failed to publish transaction {} to Kafka: {}",

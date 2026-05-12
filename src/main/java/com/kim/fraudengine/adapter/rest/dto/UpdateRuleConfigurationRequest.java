@@ -7,4 +7,9 @@ import java.util.Map;
 public record UpdateRuleConfigurationRequest(
         @NotNull Boolean enabled,
         @PositiveOrZero int score,
-        @NotNull Map<String, String> parameters) {}
+        @NotNull Map<String, String> parameters) {
+
+    public UpdateRuleConfigurationRequest {
+        parameters = Map.copyOf(parameters);
+    }
+}

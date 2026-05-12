@@ -30,6 +30,10 @@ public class RuleConfigController {
     private final RuleConfigurationJpaRepository repository;
     private final ObjectMapper objectMapper;
 
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singletons - effectively immutable after context initialization")
     public RuleConfigController(
             JpaRuleConfigurationProvider configProvider,
             RuleConfigurationJpaRepository repository,

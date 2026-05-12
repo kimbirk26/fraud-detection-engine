@@ -3,6 +3,7 @@ package com.kim.fraudengine.application;
 import com.kim.fraudengine.domain.model.AlertStatus;
 import com.kim.fraudengine.domain.model.EvaluationOutcome;
 import com.kim.fraudengine.domain.model.FraudAlert;
+import com.kim.fraudengine.domain.model.RuleConfiguration;
 import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
@@ -276,29 +277,34 @@ public final class FraudDetectionService
     private int getVelocityWindowMinutes() {
         return configProvider
                 .getConfiguration("VELOCITY_CHECK")
-                .map(c -> {
-                    String raw = c.parameters()
-                            .getOrDefault("windowMinutes",
-                                    String.valueOf(defaultVelocityWindowMinutes));
-                    try {
-                        int parsed = Integer.parseInt(raw);
-                        if (parsed < 1) {
-                            log.warn("Invalid velocity window value "
-                                    + safeLogValue(raw)
-                                    + ", falling back to default "
-                                    + defaultVelocityWindowMinutes);
-                            return defaultVelocityWindowMinutes;
-                        }
-                        return parsed;
-                    } catch (NumberFormatException e) {
-                        log.warn("Unparseable velocity window value "
-                                + safeLogValue(raw)
-                                + ", falling back to default "
-                                + defaultVelocityWindowMinutes);
-                        return defaultVelocityWindowMinutes;
-                    }
-                })
+                .map(this::parseWindowMinutes)
                 .orElse(defaultVelocityWindowMinutes);
+    }
+
+    @SuppressFBWarnings(
+            value = "CRLF_INJECTION_LOGS",
+            justification = "Log messages are assembled only from values normalized by safeLogValue")
+    private int parseWindowMinutes(RuleConfiguration c) {
+        String raw = c.parameters()
+                .getOrDefault("windowMinutes",
+                        String.valueOf(defaultVelocityWindowMinutes));
+        try {
+            int parsed = Integer.parseInt(raw);
+            if (parsed < 1) {
+                log.warn("Invalid velocity window value "
+                        + safeLogValue(raw)
+                        + ", falling back to default "
+                        + defaultVelocityWindowMinutes);
+                return defaultVelocityWindowMinutes;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            log.warn("Unparseable velocity window value "
+                    + safeLogValue(raw)
+                    + ", falling back to default "
+                    + defaultVelocityWindowMinutes);
+            return defaultVelocityWindowMinutes;
+        }
     }
 
     private static String safeLogValue(Object value) {

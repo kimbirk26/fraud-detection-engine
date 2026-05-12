@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kim.fraudengine.adapter.persistence.entity.RuleConfigurationEntity;
 import com.kim.fraudengine.domain.model.RuleConfiguration;
 import com.kim.fraudengine.domain.port.outbound.RuleConfigurationProvider;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
@@ -24,6 +25,10 @@ public class JpaRuleConfigurationProvider implements RuleConfigurationProvider {
     private final ObjectMapper objectMapper;
     private final Cache<String, List<RuleConfiguration>> cache;
 
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singletons - effectively immutable after context initialization")
     public JpaRuleConfigurationProvider(
             RuleConfigurationJpaRepository repository, ObjectMapper objectMapper) {
         this.repository = repository;

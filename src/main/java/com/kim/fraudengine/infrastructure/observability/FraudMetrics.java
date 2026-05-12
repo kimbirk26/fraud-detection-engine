@@ -1,5 +1,6 @@
 package com.kim.fraudengine.infrastructure.observability;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -20,6 +21,10 @@ public class FraudMetrics {
     private final Timer processingTimer;
     private final DistributionSummary scoreSummary;
 
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification =
+                    "Spring-managed singleton - effectively immutable after context initialization")
     public FraudMetrics(MeterRegistry registry) {
         this.registry = registry;
 
