@@ -81,7 +81,7 @@ public class JdbcCustomerScopedUserDetailsService
     public UserDetails updatePassword(UserDetails user, String newPassword) {
         int updated = jdbcTemplate.update(UPDATE_PASSWORD_SQL, newPassword, user.getUsername());
         if (updated != 1) {
-            throw new UsernameNotFoundException("User not found");
+            throw new IllegalStateException("Password update failed: expected 1 row affected but got " + updated);
         }
 
         String customerId =
