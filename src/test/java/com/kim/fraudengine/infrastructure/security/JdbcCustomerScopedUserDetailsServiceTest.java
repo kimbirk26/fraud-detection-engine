@@ -63,7 +63,7 @@ class JdbcCustomerScopedUserDetailsServiceTest {
 
         assertThatThrownBy(() -> service.loadUserByUsername("missing-user"))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("missing-user");
+                .hasMessageContaining("User not found");
     }
 
     @Test
