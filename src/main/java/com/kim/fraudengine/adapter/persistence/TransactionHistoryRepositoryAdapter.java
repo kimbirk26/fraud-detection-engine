@@ -6,6 +6,7 @@ import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -68,5 +69,10 @@ public class TransactionHistoryRepositoryAdapter implements TransactionHistoryRe
     public long countByCustomerIdSince(String customerId, Instant windowStart) {
         return jpaRepository.countByCustomerIdAndOccurredAtGreaterThanEqual(
                 customerId, windowStart);
+    }
+
+    @Override
+    public Optional<String> findCustomerIdByTransactionId(UUID transactionId) {
+        return jpaRepository.findCustomerIdByTransactionId(transactionId);
     }
 }

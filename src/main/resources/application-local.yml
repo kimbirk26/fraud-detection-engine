@@ -20,6 +20,7 @@ app:
           authorities:
             - ROLE_USER
             - transactions:write
+            - transactions:read
             - alerts:read
             - alerts:read:all
             - alerts:write
@@ -29,6 +30,7 @@ app:
             - ROLE_USER
             - ROLE_ADMIN
             - transactions:write
+            - transactions:read
             - alerts:read
             - alerts:read:all
             - alerts:write
@@ -37,4 +39,5 @@ app:
           customerId: CUST001
           authorities:
             - ROLE_USER
+            - transactions:read
             - alerts:read

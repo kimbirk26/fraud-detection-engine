@@ -2,6 +2,7 @@ package com.kim.fraudengine.domain.port.outbound;
 
 import com.kim.fraudengine.domain.model.TransactionEvent;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -16,4 +17,6 @@ public interface TransactionHistoryRepository {
     boolean existsByTransactionId(UUID transactionId);
 
     long countByCustomerIdSince(String customerId, Instant windowStart);
+
+    Optional<String> findCustomerIdByTransactionId(UUID transactionId);
 }

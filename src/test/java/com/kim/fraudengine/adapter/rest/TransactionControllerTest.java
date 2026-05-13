@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +19,8 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionEvent;
+import com.kim.fraudengine.domain.model.TransactionStatus;
+import com.kim.fraudengine.domain.port.inbound.GetTransactionStatusUseCase;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
 import com.kim.fraudengine.domain.port.outbound.TransactionEventPublisher;
 import com.kim.fraudengine.infrastructure.security.CustomerAccessEvaluator;
@@ -53,6 +56,8 @@ class TransactionControllerTest {
     @Autowired ObjectMapper objectMapper;
 
     @MockitoBean ProcessTransactionUseCase processTransactionUseCase;
+
+    @MockitoBean GetTransactionStatusUseCase getTransactionStatusUseCase;
 
     @MockitoBean TransactionEventPublisher eventPublisher;
 
@@ -180,7 +185,7 @@ class TransactionControllerTest {
 
     @Test
     @WithMockUser(authorities = "transactions:write")
-    void submitAsync_returns202() throws Exception {
+    void submitAsync_returns202_withTransactionId() throws Exception {
         when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
         when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
 
@@ -189,7 +194,8 @@ class TransactionControllerTest {
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest())))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.transactionId").value(TRANSACTION_ID.toString()));
 
         verify(eventPublisher).publish(any());
     }
@@ -214,6 +220,76 @@ class TransactionControllerTest {
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest())))
+                .andExpect(status().isForbidden());
+    }
+
+    // --- GET /api/v1/transactions/{id}/status ---
+
+    @Test
+    @WithMockUser(authorities = "transactions:read")
+    void getStatus_returnsPending_whenTransactionNotProcessed() throws Exception {
+        when(getTransactionStatusUseCase.getStatus(TRANSACTION_ID))
+                .thenReturn(TransactionStatus.pending());
+
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionId").value(TRANSACTION_ID.toString()))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.alert").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(authorities = "transactions:read")
+    void getStatus_returnsClean_whenTransactionProcessedWithNoAlert() throws Exception {
+        when(getTransactionStatusUseCase.getStatus(TRANSACTION_ID))
+                .thenReturn(TransactionStatus.clean("CUST001"));
+        when(customerAccessEvaluator.canRead(anyString(), any())).thenReturn(true);
+
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionId").value(TRANSACTION_ID.toString()))
+                .andExpect(jsonPath("$.status").value("CLEAN"))
+                .andExpect(jsonPath("$.alert").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(authorities = "transactions:read")
+    void getStatus_returnsFlagged_whenTransactionHasAlert() throws Exception {
+        FraudAlert alert = sampleAlert();
+        when(getTransactionStatusUseCase.getStatus(TRANSACTION_ID))
+                .thenReturn(TransactionStatus.flagged("CUST001", alert));
+        when(customerAccessEvaluator.canRead(anyString(), any())).thenReturn(true);
+
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionId").value(TRANSACTION_ID.toString()))
+                .andExpect(jsonPath("$.status").value("FLAGGED"))
+                .andExpect(jsonPath("$.alert.id").value(ALERT_ID.toString()));
+    }
+
+    @Test
+    @WithMockUser(authorities = "transactions:read")
+    void getStatus_returnsPending_whenAccessDenied() throws Exception {
+        when(getTransactionStatusUseCase.getStatus(TRANSACTION_ID))
+                .thenReturn(TransactionStatus.clean("CUST002"));
+        when(customerAccessEvaluator.canRead(anyString(), any())).thenReturn(false);
+
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.alert").doesNotExist());
+    }
+
+    @Test
+    void getStatus_returns401_whenUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(authorities = "alerts:read")
+    void getStatus_returns403_whenMissingAuthority() throws Exception {
+        mockMvc.perform(get("/api/v1/transactions/{id}/status", TRANSACTION_ID))
                 .andExpect(status().isForbidden());
     }
 

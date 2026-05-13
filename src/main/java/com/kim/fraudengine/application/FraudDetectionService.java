@@ -8,7 +8,9 @@ import com.kim.fraudengine.domain.model.RuleResult;
 import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
+import com.kim.fraudengine.domain.model.TransactionStatus;
 import com.kim.fraudengine.domain.port.inbound.GetAlertsUseCase;
+import com.kim.fraudengine.domain.port.inbound.GetTransactionStatusUseCase;
 import com.kim.fraudengine.domain.port.inbound.ProcessTransactionUseCase;
 import com.kim.fraudengine.domain.port.inbound.UpdateAlertStatusUseCase;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
@@ -40,7 +42,8 @@ import java.util.UUID;
  */
 @Service
 public final class FraudDetectionService
-        implements ProcessTransactionUseCase, GetAlertsUseCase, UpdateAlertStatusUseCase {
+        implements ProcessTransactionUseCase, GetAlertsUseCase, UpdateAlertStatusUseCase,
+                GetTransactionStatusUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(FraudDetectionService.class);
 
@@ -250,6 +253,20 @@ public final class FraudDetectionService
     @Override
     public Optional<FraudAlert> getById(UUID id) {
         return alertRepository.findById(id);
+    }
+
+    @Override
+    public TransactionStatus getStatus(UUID transactionId) {
+        Optional<String> customerId =
+                transactionHistoryRepository.findCustomerIdByTransactionId(transactionId);
+        if (customerId.isEmpty()) {
+            return TransactionStatus.pending();
+        }
+        Optional<FraudAlert> alert = alertRepository.findByTransactionId(transactionId);
+        if (alert.isPresent()) {
+            return TransactionStatus.flagged(customerId.get(), alert.get());
+        }
+        return TransactionStatus.clean(customerId.get());
     }
 
     @Override

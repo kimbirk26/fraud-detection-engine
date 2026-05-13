@@ -17,6 +17,7 @@ import com.kim.fraudengine.domain.model.Severity;
 import com.kim.fraudengine.domain.model.TransactionCategory;
 import com.kim.fraudengine.domain.model.TransactionContext;
 import com.kim.fraudengine.domain.model.TransactionEvent;
+import com.kim.fraudengine.domain.model.TransactionStatus;
 import com.kim.fraudengine.domain.port.outbound.AlertRepository;
 import com.kim.fraudengine.domain.port.outbound.RuleConfigurationProvider;
 import com.kim.fraudengine.domain.port.outbound.TransactionHistoryRepository;
@@ -613,6 +614,58 @@ class FraudDetectionServiceTest {
 
         assertThat(result).isEmpty();
         verify(alertRepository, never()).save(any());
+    }
+
+    @Test
+    void getStatus_shouldReturnPending_whenTransactionNotFound() {
+        UUID txId = UUID.randomUUID();
+        when(transactionHistoryRepository.findCustomerIdByTransactionId(txId))
+                .thenReturn(Optional.empty());
+
+        TransactionStatus result = service.getStatus(txId);
+
+        assertThat(result.state()).isEqualTo(TransactionStatus.State.PENDING);
+        assertThat(result.customerId()).isNull();
+        assertThat(result.alert()).isEmpty();
+        verify(alertRepository, never()).findByTransactionId(any());
+    }
+
+    @Test
+    void getStatus_shouldReturnClean_whenTransactionFoundWithNoAlert() {
+        UUID txId = UUID.randomUUID();
+        when(transactionHistoryRepository.findCustomerIdByTransactionId(txId))
+                .thenReturn(Optional.of("CUST001"));
+        when(alertRepository.findByTransactionId(txId)).thenReturn(Optional.empty());
+
+        TransactionStatus result = service.getStatus(txId);
+
+        assertThat(result.state()).isEqualTo(TransactionStatus.State.CLEAN);
+        assertThat(result.customerId()).isEqualTo("CUST001");
+        assertThat(result.alert()).isEmpty();
+    }
+
+    @Test
+    void getStatus_shouldReturnFlagged_whenTransactionFoundWithAlert() {
+        UUID txId = UUID.randomUUID();
+        FraudAlert alert =
+                FraudAlert.from(
+                        transaction(),
+                        List.of(
+                                RuleResult.flag(
+                                        "AMOUNT_THRESHOLD",
+                                        Severity.HIGH,
+                                        "Amount exceeds threshold",
+                                        40)),
+                        40);
+        when(transactionHistoryRepository.findCustomerIdByTransactionId(txId))
+                .thenReturn(Optional.of("CUST001"));
+        when(alertRepository.findByTransactionId(txId)).thenReturn(Optional.of(alert));
+
+        TransactionStatus result = service.getStatus(txId);
+
+        assertThat(result.state()).isEqualTo(TransactionStatus.State.FLAGGED);
+        assertThat(result.customerId()).isEqualTo("CUST001");
+        assertThat(result.alert()).hasValue(alert);
     }
 
     private TransactionEvent secondTransaction() {
