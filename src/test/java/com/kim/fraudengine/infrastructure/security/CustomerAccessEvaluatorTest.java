@@ -117,6 +117,31 @@ class CustomerAccessEvaluatorTest {
         assertThat(evaluator.canWrite("CUST001", auth)).isTrue();
     }
 
+    // --- resolveCustomerId ---
+
+    @Test
+    void resolveCustomerId_returnsPrincipalCustomerId_whenScoped() {
+        Authentication auth = customerScopedAuth("CUST001", "transactions:write");
+        assertThat(evaluator.resolveCustomerId("CUST999", auth)).isEqualTo("CUST001");
+    }
+
+    @Test
+    void resolveCustomerId_returnsRequestCustomerId_whenPrincipalHasNullCustomerId() {
+        Authentication auth = customerScopedAuth(null, "transactions:write");
+        assertThat(evaluator.resolveCustomerId("CUST999", auth)).isEqualTo("CUST999");
+    }
+
+    @Test
+    void resolveCustomerId_returnsRequestCustomerId_whenPrincipalIsNotCustomerScoped() {
+        Authentication auth = authenticatedUser("ROLE_ADMIN");
+        assertThat(evaluator.resolveCustomerId("CUST999", auth)).isEqualTo("CUST999");
+    }
+
+    @Test
+    void resolveCustomerId_returnsRequestCustomerId_whenAuthenticationIsNull() {
+        assertThat(evaluator.resolveCustomerId("CUST999", null)).isEqualTo("CUST999");
+    }
+
     // --- helpers ---
 
     private Authentication authenticatedUser(String... authorities) {

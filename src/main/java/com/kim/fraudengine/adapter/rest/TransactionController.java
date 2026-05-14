@@ -76,8 +76,12 @@ public class TransactionController {
     @PreAuthorize("hasAuthority('transactions:write') and @customerAccess.canWrite(#request.customerId(), authentication)")
     @PostMapping("/async")
     public ResponseEntity<TransactionAcceptedResponse> submitAsync(
-            @Valid @RequestBody TransactionRequest request) {
-        TransactionEvent transactionEvent = toDomain(request);
+            @Valid @RequestBody TransactionRequest request, Authentication authentication) {
+        String authorizedCustomerId =
+                customerAccessEvaluator.resolveCustomerId(
+                        request.customerId(), authentication);
+        TransactionEvent transactionEvent =
+                transactionMapper.toEvent(request, authorizedCustomerId);
         eventPublisher.publish(transactionEvent);
         return ResponseEntity.accepted()
                 .body(new TransactionAcceptedResponse(transactionEvent.id()));
@@ -99,8 +103,12 @@ public class TransactionController {
     @PreAuthorize("hasAuthority('transactions:write') and @customerAccess.canWrite(#request.customerId(), authentication)")
     @PostMapping("/sync")
     public ResponseEntity<AlertResponse> submitSync(
-            @Valid @RequestBody TransactionRequest request) {
-        TransactionEvent transactionEvent = toDomain(request);
+            @Valid @RequestBody TransactionRequest request, Authentication authentication) {
+        String authorizedCustomerId =
+                customerAccessEvaluator.resolveCustomerId(
+                        request.customerId(), authentication);
+        TransactionEvent transactionEvent =
+                transactionMapper.toEvent(request, authorizedCustomerId);
         Optional<AlertResponse> alert =
                 processTransactionUseCase.process(transactionEvent).map(AlertMapper::toResponse);
 
@@ -136,10 +144,6 @@ public class TransactionController {
                 "TRANSACTION_STATUS_VIEWED",
                 auditDetails(authentication, id));
         return TransactionStatusMapper.toResponse(id, status);
-    }
-
-    private TransactionEvent toDomain(TransactionRequest req) {
-        return transactionMapper.toEvent(req);
     }
 
     private LinkedHashMap<String, Object> auditDetails(

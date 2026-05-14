@@ -62,6 +62,27 @@ public class CustomerAccessEvaluator {
                 .anyMatch("ROLE_ADMIN"::equals);
     }
 
+    /**
+     * Returns the authoritative customer ID for a write operation.
+     *
+     * <p>For customer-scoped principals the ID is derived from the authenticated token,
+     * not from the request body. This ensures that even if the {@code @PreAuthorize}
+     * gate is bypassed or misconfigured, the domain event cannot be attributed to
+     * a different customer.
+     *
+     * <p>For broad-access principals (analysts/admins whose token carries no customer
+     * scope) the caller-supplied {@code requestCustomerId} is returned as-is.
+     */
+    public String resolveCustomerId(String requestCustomerId, Authentication authentication) {
+        if (authentication != null
+                && authentication.getPrincipal()
+                        instanceof CustomerScopedPrincipal customerScopedPrincipal
+                && customerScopedPrincipal.customerId() != null) {
+            return customerScopedPrincipal.customerId();
+        }
+        return requestCustomerId;
+    }
+
     private String normalizeCustomerId(String customerId) {
         if (customerId == null) {
             return null;

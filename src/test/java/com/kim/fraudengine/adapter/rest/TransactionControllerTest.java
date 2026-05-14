@@ -2,6 +2,7 @@ package com.kim.fraudengine.adapter.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -119,7 +120,8 @@ class TransactionControllerTest {
     @WithMockUser(authorities = "transactions:write")
     void submitSync_returns200_whenFraudDetected() throws Exception {
         when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
-        when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
+        when(customerAccessEvaluator.resolveCustomerId(anyString(), any())).thenReturn("CUST001");
+        when(transactionMapper.toEvent(any(), anyString())).thenReturn(sampleEvent());
         when(processTransactionUseCase.process(any())).thenReturn(Optional.of(sampleAlert()));
 
         mockMvc.perform(
@@ -130,13 +132,16 @@ class TransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(ALERT_ID.toString()))
                 .andExpect(jsonPath("$.highestSeverity").value("HIGH"));
+
+        verify(transactionMapper).toEvent(any(), eq("CUST001"));
     }
 
     @Test
     @WithMockUser(authorities = "transactions:write")
     void submitSync_returns204_whenNoFraudDetected() throws Exception {
         when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
-        when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
+        when(customerAccessEvaluator.resolveCustomerId(anyString(), any())).thenReturn("CUST001");
+        when(transactionMapper.toEvent(any(), anyString())).thenReturn(sampleEvent());
         when(processTransactionUseCase.process(any())).thenReturn(Optional.empty());
 
         mockMvc.perform(
@@ -187,7 +192,8 @@ class TransactionControllerTest {
     @WithMockUser(authorities = "transactions:write")
     void submitAsync_returns202_withTransactionId() throws Exception {
         when(customerAccessEvaluator.canWrite(anyString(), any())).thenReturn(true);
-        when(transactionMapper.toEvent(any())).thenReturn(sampleEvent());
+        when(customerAccessEvaluator.resolveCustomerId(anyString(), any())).thenReturn("CUST001");
+        when(transactionMapper.toEvent(any(), anyString())).thenReturn(sampleEvent());
 
         mockMvc.perform(
                         post("/api/v1/transactions/async")
@@ -198,6 +204,7 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.transactionId").value(TRANSACTION_ID.toString()));
 
         verify(eventPublisher).publish(any());
+        verify(transactionMapper).toEvent(any(), eq("CUST001"));
     }
 
     @Test

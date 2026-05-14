@@ -8,9 +8,13 @@ import org.springframework.stereotype.Component;
 public class TransactionMapper {
 
     public TransactionEvent toEvent(TransactionRequest request) {
+        return toEvent(request, request.customerId());
+    }
+
+    public TransactionEvent toEvent(TransactionRequest request, String authorizedCustomerId) {
         return TransactionEvent.of(
                 request.transactionId(),
-                request.customerId(),
+                authorizedCustomerId,
                 request.amount(),
                 request.merchantId(),
                 request.merchantName(),
